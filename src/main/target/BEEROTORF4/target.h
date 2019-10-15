@@ -29,7 +29,8 @@
 #define BEEPER_PIN              PB3
 #define BEEPER_INVERTED
 
-#define ENABLE_DSHOT_DMAR       true
+// Tim_UP 1 (motors 1 & 2) conflicts with Tim 4 Ch 3 (LED_STRIP)
+#define ENABLE_DSHOT_DMAR       false
 
 // ICM20689 interrupt
 #define USE_EXTI
@@ -44,7 +45,6 @@
 
 #define USE_ACC
 #define USE_ACC_SPI_ICM20689
-#define ACC_1_ALIGN             CW270_DEG
 
 #define USE_GYRO
 #define USE_GYRO_SPI_ICM20689
@@ -154,4 +154,4 @@
 #define TARGET_IO_PORTD (BIT(2))
 
 #define USABLE_TIMER_CHANNEL_COUNT 10
-#define USED_TIMERS  ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(8) | TIM_N(9) )
+#define USED_TIMERS  ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(5) | TIM_N(8) | TIM_N(9) )

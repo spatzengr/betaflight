@@ -46,7 +46,7 @@
 typedef enum ADCDevice {
     ADCINVALID = -1,
     ADCDEV_1   = 0,
-#if defined(STM32F3) || defined(STM32F4) || defined(STM32F7)
+#if defined(STM32F3) || defined(STM32F4) || defined(STM32F7) || defined(STM32H7)
     ADCDEV_2,
     ADCDEV_3,
 #endif
@@ -64,12 +64,23 @@ typedef enum {
     ADC_CURRENT = 1,
     ADC_EXTERNAL1 = 2,
     ADC_RSSI = 3,
+#ifdef STM32H7
+    // On STM32H7, internal sensors are treated in the similar fashion as regular ADC inputs
+    ADC_CHANNEL_INTERNAL = 4,
+    ADC_TEMPSENSOR = 4,
+    ADC_VREFINT = 5,
+#endif
     ADC_CHANNEL_COUNT
 } AdcChannel;
 
 typedef struct adcOperatingConfig_s {
     ioTag_t tag;
-    uint8_t adcChannel;         // ADC1_INxx channel number
+#ifdef STM32H7
+    ADCDevice adcDevice;        // ADCDEV_x for this input
+    uint32_t adcChannel;        // ADCy_INxx channel ID for this input
+#else
+    uint8_t adcChannel;         // ADCy_INxx channel number for this input
+#endif
     uint8_t dmaIndex;           // index into DMA buffer in case of sparse channels
     bool enabled;
     uint8_t sampleTime;
@@ -80,15 +91,12 @@ void adcInit(const struct adcConfig_s *config);
 uint16_t adcGetChannel(uint8_t channel);
 
 #ifdef USE_ADC_INTERNAL
-extern uint16_t adcVREFINTCAL;
-extern uint16_t adcTSCAL1;
-extern uint16_t adcTSCAL2;
-extern int16_t  adcTSSlopeK;
-
 bool adcInternalIsBusy(void);
 void adcInternalStartConversion(void);
 uint16_t adcInternalReadVrefint(void);
 uint16_t adcInternalReadTempsensor(void);
+uint16_t adcInternalCompensateVref(uint16_t vrefAdcValue);
+int16_t adcInternalComputeTemperature(uint16_t tempAdcValue, uint16_t vrefValue);
 #endif
 
 #if !defined(SIMULATOR_BUILD)

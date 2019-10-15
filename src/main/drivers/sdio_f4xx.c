@@ -38,7 +38,6 @@
 #include "sdmmc_sdio.h"
 #include "stm32f4xx_gpio.h"
 
-#include "pg/pg.h"
 #include "pg/sdio.h"
 
 #include "drivers/io.h"
@@ -260,28 +259,6 @@ void SDIO_DMA_ST3_IRQHandler(dmaChannelDescriptor_t *dma);
 void SDIO_DMA_ST6_IRQHandler(dmaChannelDescriptor_t *dma);
 
 //static void             SD_PowerOFF                 (void);
-
-/** -----------------------------------------------------------------------------------------------------------------*/
-/**		SD_IsDetected
-  *
-  * @brief  Test if card is present
-  * @param  bool   true or false
-  */
-bool SD_IsDetected(void)
-{
-      __IO uint8_t status = SD_PRESENT;
-
-      /*!< Check GPIO to detect SD */
-    #ifdef SDCARD_DETECT_PIN
-      const IO_t sd_det = IOGetByTag(IO_TAG(SDCARD_DETECT_PIN));
-      if (IORead(sd_det) != 0)
-      {
-        status = SD_NOT_PRESENT;
-      }
-    #endif
-      return status;
-}
-
 
 /** -----------------------------------------------------------------------------------------------------------------*/
 /**		DataTransferInit
@@ -931,7 +908,7 @@ SD_Error_t SD_GetCardInfo(void)
         SD_CardInfo.CardCapacity  = (SD_CardInfo.SD_csd.DeviceSize + 1) ;
         SD_CardInfo.CardCapacity *= (1 << (SD_CardInfo.SD_csd.DeviceSizeMul + 2));
         SD_CardInfo.CardBlockSize = 1 << (SD_CardInfo.SD_csd.RdBlockLen);
-        SD_CardInfo.CardCapacity *= SD_CardInfo.CardBlockSize;
+        SD_CardInfo.CardCapacity = SD_CardInfo.CardCapacity * SD_CardInfo.CardBlockSize / 512; // In 512 byte blocks
     }
     else if(SD_CardType == SD_HIGH_CAPACITY)
     {
@@ -1648,8 +1625,8 @@ void SD_Initialize_LL(DMA_Stream_TypeDef *dma)
                               DMA_MBURST_INC4      | DMA_PBURST_INC4        |
                               DMA_MEMORY_TO_PERIPH);
         DMA2_Stream3->FCR  = (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);                 // Configuration FIFO control register
-        dmaInit(dmaGetIdentifier(DMA2_Stream3), OWNER_SDCARD, 0);
-        dmaSetHandler(dmaGetIdentifier(DMA2_Stream3), SDIO_DMA_ST3_IRQHandler, 1, 0);
+        dmaInit(dmaGetIdentifier((dmaResource_t *)DMA2_Stream3), OWNER_SDCARD, 0);
+        dmaSetHandler(dmaGetIdentifier((dmaResource_t *)DMA2_Stream3), SDIO_DMA_ST3_IRQHandler, 1, 0);
     } else {
         // Initialize DMA2 channel 6
         DMA2_Stream6->CR   = 0;                                                 // Reset DMA Stream control register
@@ -1661,8 +1638,8 @@ void SD_Initialize_LL(DMA_Stream_TypeDef *dma)
                               DMA_MBURST_INC4      | DMA_PBURST_INC4        |
                               DMA_MEMORY_TO_PERIPH);
         DMA2_Stream6->FCR  = (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);                 // Configuration FIFO control register
-        dmaInit(dmaGetIdentifier(DMA2_Stream6), OWNER_SDCARD, 0);
-        dmaSetHandler(dmaGetIdentifier(DMA2_Stream6), SDIO_DMA_ST6_IRQHandler, 1, 0);
+        dmaInit(dmaGetIdentifier((dmaResource_t *)DMA2_Stream6), OWNER_SDCARD, 0);
+        dmaSetHandler(dmaGetIdentifier((dmaResource_t *)DMA2_Stream6), SDIO_DMA_ST6_IRQHandler, 1, 0);
     }
 }
 
@@ -1680,12 +1657,6 @@ bool SD_GetState(void)
 bool SD_Init(void)
 {
     SD_Error_t ErrorState;
-
-    // Check if SD card is present
-    if(SD_IsDetected() != SD_PRESENT)
-    {
-        return false;
-    }
 
     // Initialize SDIO peripheral interface with default configuration for SD card initialization
     MODIFY_REG(SDIO->CLKCR, CLKCR_CLEAR_MASK, (uint32_t) SDIO_INIT_CLK_DIV);

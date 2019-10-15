@@ -47,7 +47,7 @@
 #define ADC_VOLTAGE 3.3f
 #endif
 
-#if !defined(STM32F411xE) && !defined(STM32F7)
+#if !defined(STM32F411xE) && !defined(STM32F7) && !defined(STM32H7)
 #define CAMERA_CONTROL_SOFTWARE_PWM_AVAILABLE
 #include "build/atomic.h"
 #endif
@@ -69,6 +69,11 @@ void pgResetFn_cameraControlConfig(cameraControlConfig_t *cameraControlConfig)
     cameraControlConfig->internalResistance = 470;
     cameraControlConfig->ioTag = timerioTagGetByUsage(TIM_USE_CAMERA_CONTROL, 0);
     cameraControlConfig->inverted = 0;   // Output is inverted externally
+    cameraControlConfig->buttonResistanceValues[CAMERA_CONTROL_KEY_ENTER] = 450;
+    cameraControlConfig->buttonResistanceValues[CAMERA_CONTROL_KEY_LEFT]  = 270;
+    cameraControlConfig->buttonResistanceValues[CAMERA_CONTROL_KEY_UP]    = 150;
+    cameraControlConfig->buttonResistanceValues[CAMERA_CONTROL_KEY_RIGHT] = 68;
+    cameraControlConfig->buttonResistanceValues[CAMERA_CONTROL_KEY_DOWN]  = 0;
 }
 
 static struct {
@@ -126,7 +131,7 @@ void cameraControlInit(void)
 
     if (CAMERA_CONTROL_MODE_HARDWARE_PWM == cameraControlConfig()->mode) {
 #ifdef CAMERA_CONTROL_HARDWARE_PWM_AVAILABLE
-        const timerHardware_t *timerHardware = timerGetByTag(cameraControlConfig()->ioTag);
+        const timerHardware_t *timerHardware = timerAllocate(cameraControlConfig()->ioTag, OWNER_CAMERA_CONTROL, 0);
 
         if (!timerHardware) {
             return;
@@ -184,11 +189,9 @@ void cameraControlProcess(uint32_t currentTimeUs)
     }
 }
 
-static const int buttonResistanceValues[] = { 45000, 27000, 15000, 6810, 0 };
-
 static float calculateKeyPressVoltage(const cameraControlKey_e key)
 {
-    const int buttonResistance = buttonResistanceValues[key];
+    const int buttonResistance = cameraControlConfig()->buttonResistanceValues[key] * 100;
     return 1.0e-2f * cameraControlConfig()->refVoltage * buttonResistance / (100 * cameraControlConfig()->internalResistance + buttonResistance);
 }
 

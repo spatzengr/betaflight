@@ -61,6 +61,7 @@ extern "C" {
     #include "telemetry/telemetry.h"
     #include "telemetry/msp_shared.h"
 
+    rssiSource_e rssiSource;
     bool airMode;
 
     uint16_t testBatteryVoltage = 0;
@@ -328,7 +329,7 @@ bool isSerialTransmitBufferEmpty(const serialPort_t *) { return true; }
 serialPortConfig_t *findSerialPortConfig(serialPortFunction_e) {return NULL;}
 
 bool telemetryDetermineEnabledState(portSharing_e) {return true;}
-bool telemetryCheckRxPortShared(const serialPortConfig_t *) {return true;}
+bool telemetryCheckRxPortShared(const serialPortConfig_t *, SerialRXType) {return true;}
 bool telemetryIsSensorEnabled(sensor_e) {return true;}
 
 portSharing_e determinePortSharing(const serialPortConfig_t *, serialPortFunction_e) {return PORTSHARING_NOT_SHARED;}

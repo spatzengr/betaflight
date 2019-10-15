@@ -23,6 +23,8 @@
 #include "platform.h"
 
 #include "common/axis.h"
+#include "common/maths.h"
+#include "common/sensor_alignment.h"
 #include "drivers/exti.h"
 #include "drivers/bus.h"
 #include "drivers/sensor.h"
@@ -85,12 +87,11 @@ typedef struct gyroDev_s {
     sensorGyroReadDataFuncPtr temperatureFn;                  // read temperature if available
     extiCallbackRec_t exti;
     busDevice_t bus;
-    float scale;                                            // scalefactor
+    float scale;                                             // scalefactor
     float gyroZero[XYZ_AXIS_COUNT];
-    float gyroADC[XYZ_AXIS_COUNT];                        // gyro data after calibration and alignment
-    float gyroADCf[XYZ_AXIS_COUNT];
+    float gyroADC[XYZ_AXIS_COUNT];                           // gyro data after calibration and alignment
     int32_t gyroADCRawPrevious[XYZ_AXIS_COUNT];
-    int16_t gyroADCRaw[XYZ_AXIS_COUNT];
+    int16_t gyroADCRaw[XYZ_AXIS_COUNT];                      // raw data from sensor
     int16_t temperature;
     mpuDetectionResult_t mpuDetectionResult;
     sensor_align_e gyroAlign;
@@ -103,6 +104,7 @@ typedef struct gyroDev_s {
     ioTag_t mpuIntExtiTag;
     uint8_t gyroHasOverflowProtection;
     gyroHardware_e gyroHardware;
+    fp_rotationMatrix_t rotationMatrix;
 } gyroDev_t;
 
 typedef struct accDev_s {
@@ -121,6 +123,7 @@ typedef struct accDev_s {
     bool acc_high_fsr;
     char revisionCode;                                      // a revision code for the sensor, if known
     uint8_t filler[2];
+    fp_rotationMatrix_t rotationMatrix;
 } accDev_t;
 
 static inline void accDevLock(accDev_t *acc)

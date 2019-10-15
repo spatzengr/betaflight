@@ -26,6 +26,8 @@
 
 #define USBD_PRODUCT_STRING "KISSFCV2F7"
 
+#undef USE_CUSTOM_DEFAULTS_ADDRESS
+
 #define LED0_PIN   PA8  // blue
 #define LED1_PIN   PC8 // blingbling
 #define LED1_INVERTED
@@ -43,7 +45,6 @@
 
 #define USE_ACC
 #define USE_ACC_SPI_MPU6000
-#define ACC_1_ALIGN             CW90_DEG
 
 
 #define USE_SPI

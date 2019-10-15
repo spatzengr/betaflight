@@ -257,7 +257,11 @@ void schedulerOptimizeRate(bool optimizeRate)
 
 inline static timeUs_t getPeriodCalculationBasis(const cfTask_t* task)
 {
-    return *(timeUs_t*)((uint8_t*)task + periodCalculationBasisOffset);
+    if (task->staticPriority == TASK_PRIORITY_REALTIME) {
+        return *(timeUs_t*)((uint8_t*)task + periodCalculationBasisOffset);
+    } else {
+        return task->lastExecutedAt;
+    }
 }
 
 FAST_CODE void scheduler(void)
@@ -344,7 +348,9 @@ FAST_CODE void scheduler(void)
     if (selectedTask) {
         // Found a task that should be run
         selectedTask->taskLatestDeltaTime = currentTimeUs - selectedTask->lastExecutedAt;
+#if defined(USE_TASK_STATISTICS)
         float period = currentTimeUs - selectedTask->lastExecutedAt;
+#endif
         selectedTask->lastExecutedAt = currentTimeUs;
         selectedTask->lastDesiredAt += (cmpTimeUs(currentTimeUs, selectedTask->lastDesiredAt) / selectedTask->desiredPeriod) * selectedTask->desiredPeriod;
         selectedTask->dynamicPriority = 0;

@@ -10,11 +10,15 @@ COMMON_SRC = \
             cli/cli.c \
             cli/settings.c \
             drivers/adc.c \
+            drivers/dshot.c \
+            drivers/dshot_dpwm.c \
+            drivers/dshot_command.c \
             drivers/buf_writer.c \
             drivers/bus.c \
             drivers/bus_i2c_config.c \
             drivers/bus_i2c_busdev.c \
             drivers/bus_i2c_soft.c \
+            drivers/bus_quadspi.c \
             drivers/bus_spi.c \
             drivers/bus_spi_config.c \
             drivers/bus_spi_pinconfig.c \
@@ -25,7 +29,9 @@ COMMON_SRC = \
             drivers/io.c \
             drivers/light_led.c \
             drivers/mco.c \
+            drivers/motor.c \
             drivers/pinio.c \
+            drivers/pin_pull_up_down.c \
             drivers/resource.c \
             drivers/rcc.c \
             drivers/serial.c \
@@ -46,6 +52,7 @@ COMMON_SRC = \
             fc/hardfaults.c \
             fc/tasks.c \
             fc/runtime_config.c \
+            fc/stats.c \
             io/beeper.c \
             io/piniobox.c \
             io/serial.c \
@@ -82,10 +89,13 @@ COMMON_SRC = \
             flight/position.c \
             flight/failsafe.c \
             flight/gps_rescue.c \
+            flight/gyroanalyse.c \
             flight/imu.c \
+            flight/interpolated_setpoint.c \
             flight/mixer.c \
             flight/mixer_tricopter.c \
             flight/pid.c \
+            flight/rpm_filter.c \
             flight/servos.c \
             flight/servos_tricopter.c \
             io/serial_4way.c \
@@ -102,6 +112,7 @@ COMMON_SRC = \
             rx/sbus.c \
             rx/sbus_channels.c \
             rx/spektrum.c \
+            rx/srxl2.c \
             io/spektrum_vtx_control.c \
             io/spektrum_rssi.c \
             rx/sumd.c \
@@ -112,8 +123,6 @@ COMMON_SRC = \
             sensors/boardalignment.c \
             sensors/compass.c \
             sensors/gyro.c \
-            sensors/gyroanalyse.c \
-            sensors/rpm_filter.c \
             sensors/initialisation.c \
             blackbox/blackbox.c \
             blackbox/blackbox_encoding.c \
@@ -122,6 +131,7 @@ COMMON_SRC = \
             cms/cms_menu_blackbox.c \
             cms/cms_menu_builtin.c \
             cms/cms_menu_failsafe.c \
+            cms/cms_menu_gps_rescue.c\
             cms/cms_menu_imu.c \
             cms/cms_menu_ledstrip.c \
             cms/cms_menu_misc.c \
@@ -167,7 +177,6 @@ COMMON_SRC = \
             telemetry/ibus.c \
             telemetry/ibus_shared.c \
             sensors/esc_sensor.c \
-            io/vtx_string.c \
             io/vtx.c \
             io/vtx_rtc6705.c \
             io/vtx_smartaudio.c \
@@ -179,6 +188,14 @@ COMMON_DEVICE_SRC = \
             $(DEVICE_STDPERIPH_SRC)
 
 COMMON_SRC := $(COMMON_SRC) $(COMMON_DEVICE_SRC)
+
+ifeq ($(EXST),yes)
+TARGET_FLAGS := -DUSE_EXST $(TARGET_FLAGS)
+endif
+
+ifeq ($(RAM_BASED),yes)
+TARGET_FLAGS := -DUSE_EXST -DCONFIG_IN_RAM -DRAMBASED $(TARGET_FLAGS)
+endif
 
 ifeq ($(SIMULATOR_BUILD),yes)
 TARGET_FLAGS := -DSIMULATOR_BUILD $(TARGET_FLAGS)
@@ -212,6 +229,7 @@ SPEED_OPTIMISED_SRC := $(SPEED_OPTIMISED_SRC) \
             drivers/adc.c \
             drivers/buf_writer.c \
             drivers/bus.c \
+            drivers/bus_quadspi.c \
             drivers/bus_spi.c \
             drivers/exti.c \
             drivers/io.c \
@@ -226,9 +244,11 @@ SPEED_OPTIMISED_SRC := $(SPEED_OPTIMISED_SRC) \
             fc/rc.c \
             fc/rc_controls.c \
             fc/runtime_config.c \
+            flight/gyroanalyse.c \
             flight/imu.c \
             flight/mixer.c \
             flight/pid.c \
+            flight/rpm_filter.c \
             rx/ibus.c \
             rx/rx.c \
             rx/rx_spi.c \
@@ -236,6 +256,7 @@ SPEED_OPTIMISED_SRC := $(SPEED_OPTIMISED_SRC) \
             rx/sbus.c \
             rx/sbus_channels.c \
             rx/spektrum.c \
+            rx/srxl2.c \
             rx/sumd.c \
             rx/xbus.c \
             rx/fport.c \
@@ -243,8 +264,6 @@ SPEED_OPTIMISED_SRC := $(SPEED_OPTIMISED_SRC) \
             sensors/acceleration.c \
             sensors/boardalignment.c \
             sensors/gyro.c \
-            sensors/gyroanalyse.c \
-            sensors/rpm_filter.c \
             $(CMSIS_SRC) \
             $(DEVICE_STDPERIPH_SRC) \
 
@@ -301,6 +320,7 @@ SIZE_OPTIMISED_SRC := $(SIZE_OPTIMISED_SRC) \
             cms/cms_menu_blackbox.c \
             cms/cms_menu_builtin.c \
             cms/cms_menu_failsafe.c \
+            cms/cms_menu_gps_rescue.c\
             cms/cms_menu_imu.c \
             cms/cms_menu_ledstrip.c \
             cms/cms_menu_misc.c \
@@ -310,7 +330,6 @@ SIZE_OPTIMISED_SRC := $(SIZE_OPTIMISED_SRC) \
             cms/cms_menu_vtx_rtc6705.c \
             cms/cms_menu_vtx_smartaudio.c \
             cms/cms_menu_vtx_tramp.c \
-            io/vtx_string.c \
             io/vtx.c \
             io/vtx_rtc6705.c \
             io/vtx_smartaudio.c \
@@ -361,6 +380,7 @@ ifneq ($(filter ONBOARDFLASH,$(FEATURES)),)
 SRC += \
             drivers/flash.c \
             drivers/flash_m25p16.c \
+            drivers/flash_w25n01g.c \
             drivers/flash_w25m.c \
             io/flashfs.c \
             pg/flash.c \

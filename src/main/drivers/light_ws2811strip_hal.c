@@ -37,8 +37,6 @@
 
 #include "light_ws2811strip.h"
 
-typedef DMA_Stream_TypeDef dmaStream_t;
-
 static IO_t ws2811IO = IO_NONE;
 
 static TIM_HandleTypeDef TimHandle;
@@ -57,9 +55,16 @@ bool ws2811LedStripHardwareInit(ioTag_t ioTag)
         return false;
     }
 
-    const timerHardware_t *timerHardware = timerGetByTag(ioTag);
+    const timerHardware_t *timerHardware = timerAllocate(ioTag, OWNER_LED_STRIP, 0);
+
+    if (timerHardware == NULL) {
+        return false;
+    }
+
     TIM_TypeDef *timer = timerHardware->tim;
     timerChannel = timerHardware->channel;
+
+    dmaResource_t *dmaRef;
 
 #if defined(USE_DMA_SPEC)
     const dmaChannelSpec_t *dmaSpec = dmaGetChannelSpecByTimer(timerHardware);
@@ -68,13 +73,12 @@ bool ws2811LedStripHardwareInit(ioTag_t ioTag)
         return false;
     }
 
-    dmaStream_t *dmaRef = dmaSpec->ref;
+    dmaRef = dmaSpec->ref;
     uint32_t dmaChannel = dmaSpec->channel;
 #else
-    dmaStream_t *dmaRef = timerHardware->dmaRef;
+    dmaRef = timerHardware->dmaRef;
     uint32_t dmaChannel = timerHardware->dmaChannel;
 #endif
-
 
     if (dmaRef == NULL) {
         return false;
@@ -104,9 +108,14 @@ bool ws2811LedStripHardwareInit(ioTag_t ioTag)
     IOConfigGPIOAF(ws2811IO, IO_CONFIG(GPIO_MODE_AF_PP, GPIO_SPEED_FREQ_VERY_HIGH, GPIO_PULLDOWN), timerHardware->alternateFunction);
 
     __DMA1_CLK_ENABLE();
+    __DMA2_CLK_ENABLE();
 
     /* Set the parameters to be configured */
+#ifdef STM32H7
+    hdma_tim.Init.Request = dmaChannel;
+#else
     hdma_tim.Init.Channel = dmaChannel;
+#endif
     hdma_tim.Init.Direction = DMA_MEMORY_TO_PERIPH;
     hdma_tim.Init.PeriphInc = DMA_PINC_DISABLE;
     hdma_tim.Init.MemInc = DMA_MINC_ENABLE;
@@ -120,7 +129,7 @@ bool ws2811LedStripHardwareInit(ioTag_t ioTag)
     hdma_tim.Init.PeriphBurst = DMA_PBURST_SINGLE;
 
     /* Set hdma_tim instance */
-    hdma_tim.Instance = dmaRef;
+    hdma_tim.Instance = (DMA_ARCH_TYPE *)dmaRef;
 
     uint16_t dmaIndex = timerDmaIndex(timerChannel);
 

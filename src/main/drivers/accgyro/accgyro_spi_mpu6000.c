@@ -47,7 +47,6 @@
 
 static void mpu6000AccAndGyroInit(gyroDev_t *gyro);
 
-static bool mpuSpi6000InitDone = false;
 
 
 // Bits
@@ -79,9 +78,9 @@ static bool mpuSpi6000InitDone = false;
 #define BIT_RAW_RDY_EN              0x01
 #define BIT_I2C_IF_DIS              0x10
 #define BIT_INT_STATUS_DATA         0x01
-#define BIT_GYRO                    3
-#define BIT_ACC                     2
-#define BIT_TEMP                    1
+#define BIT_GYRO                    0x04
+#define BIT_ACC                     0x02
+#define BIT_TEMP                    0x01
 
 // Product ID Description for MPU6000
 // high 4 bits low 4 bits
@@ -171,10 +170,6 @@ uint8_t mpu6000SpiDetect(const busDevice_t *bus)
 
 static void mpu6000AccAndGyroInit(gyroDev_t *gyro)
 {
-    if (mpuSpi6000InitDone) {
-        return;
-    }
-
     spiSetDivisor(gyro->bus.busdev_u.spi.instance, SPI_CLOCK_INITIALIZATION);
 
     // Device Reset
@@ -200,7 +195,7 @@ static void mpu6000AccAndGyroInit(gyroDev_t *gyro)
     spiBusWriteRegister(&gyro->bus, MPU_RA_SMPLRT_DIV, gyro->mpuDividerDrops);
     delayMicroseconds(15);
 
-    // Gyro +/- 1000 DPS Full Scale
+    // Gyro +/- 2000 DPS Full Scale
     spiBusWriteRegister(&gyro->bus, MPU_RA_GYRO_CONFIG, INV_FSR_2000DPS << 3);
     delayMicroseconds(15);
 
@@ -218,8 +213,6 @@ static void mpu6000AccAndGyroInit(gyroDev_t *gyro)
 
     spiSetDivisor(gyro->bus.busdev_u.spi.instance, SPI_CLOCK_FAST);
     delayMicroseconds(1);
-
-    mpuSpi6000InitDone = true;
 }
 
 bool mpu6000SpiAccDetect(accDev_t *acc)

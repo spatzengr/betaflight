@@ -49,7 +49,6 @@
 
 #define USE_ACC
 #define USE_ACC_SPI_MPU6500
-#define ACC_1_ALIGN             CW90_DEG
 
 
 #define USE_RX_SPI
@@ -64,7 +63,7 @@
 #define SPI2_MISO_PIN           PB14
 #define SPI2_MOSI_PIN           PB15
 #define RX_NSS_PIN              SPI2_NSS_PIN
-#define BINDPLUG_PIN            PA1
+#define RX_SPI_BIND_PIN         PA1
 
 
 #define USE_I2C

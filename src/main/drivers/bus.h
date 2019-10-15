@@ -30,7 +30,7 @@ typedef enum {
     BUSTYPE_I2C,
     BUSTYPE_SPI,
     BUSTYPE_MPU_SLAVE, // Slave I2C on SPI master
-    BUSTYPE_GYRO_AUTO  // Only used by acc/gyro bus auto detection code
+    BUSTYPE_GYRO_AUTO,  // Only used by acc/gyro bus auto detection code
 } busType_e;
 
 struct spiDevice_s;
@@ -66,5 +66,8 @@ void targetBusInit(void);
 #endif
 
 bool busWriteRegister(const busDevice_t *bus, uint8_t reg, uint8_t data);
+bool busWriteRegisterStart(const busDevice_t *bus, uint8_t reg, uint8_t data);
 bool busReadRegisterBuffer(const busDevice_t *bus, uint8_t reg, uint8_t *data, uint8_t length);
 uint8_t busReadRegister(const busDevice_t *bus, uint8_t reg);
+bool busReadRegisterBufferStart(const busDevice_t *busdev, uint8_t reg, uint8_t *data, uint8_t length);
+bool busBusy(const busDevice_t *busdev, bool *error);

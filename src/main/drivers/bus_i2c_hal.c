@@ -56,6 +56,7 @@ static void i2cUnstick(IO_t scl, IO_t sda);
 #define GPIO_AF4_I2C GPIO_AF4_I2C1
 
 const i2cHardware_t i2cHardware[I2CDEV_COUNT] = {
+#if defined(STM32F7)
 #ifdef USE_I2C_DEVICE_1
     {
         .device = I2CDEV_1,
@@ -99,6 +100,52 @@ const i2cHardware_t i2cHardware[I2CDEV_COUNT] = {
         .ev_irq = I2C4_EV_IRQn,
         .er_irq = I2C4_ER_IRQn,
     },
+#endif
+#elif defined(STM32H7)
+#ifdef USE_I2C_DEVICE_1
+    {
+        .device = I2CDEV_1,
+        .reg = I2C1,
+        .sclPins = { I2CPINDEF(PB6, GPIO_AF4_I2C1), I2CPINDEF(PB8, GPIO_AF4_I2C1) },
+        .sdaPins = { I2CPINDEF(PB7, GPIO_AF4_I2C1), I2CPINDEF(PB9, GPIO_AF4_I2C1) },
+        .rcc = RCC_APB1L(I2C1),
+        .ev_irq = I2C1_EV_IRQn,
+        .er_irq = I2C1_ER_IRQn,
+    },
+#endif
+#ifdef USE_I2C_DEVICE_2
+    {
+        .device = I2CDEV_2,
+        .reg = I2C2,
+        .sclPins = { I2CPINDEF(PB10, GPIO_AF4_I2C2), I2CPINDEF(PF1, GPIO_AF4_I2C2) },
+        .sdaPins = { I2CPINDEF(PB11, GPIO_AF4_I2C2), I2CPINDEF(PF0, GPIO_AF4_I2C2) },
+        .rcc = RCC_APB1L(I2C2),
+        .ev_irq = I2C2_EV_IRQn,
+        .er_irq = I2C2_ER_IRQn,
+    },
+#endif
+#ifdef USE_I2C_DEVICE_3
+    {
+        .device = I2CDEV_3,
+        .reg = I2C3,
+        .sclPins = { I2CPINDEF(PA8, GPIO_AF4_I2C3) },
+        .sdaPins = { I2CPINDEF(PC9, GPIO_AF4_I2C3) },
+        .rcc = RCC_APB1L(I2C3),
+        .ev_irq = I2C3_EV_IRQn,
+        .er_irq = I2C3_ER_IRQn,
+    },
+#endif
+#ifdef USE_I2C_DEVICE_4
+    {
+        .device = I2CDEV_4,
+        .reg = I2C4,
+        .sclPins = { I2CPINDEF(PD12, GPIO_AF4_I2C4), I2CPINDEF(PF14, GPIO_AF4_I2C4), I2CPINDEF(PB6, GPIO_AF6_I2C4), I2CPINDEF(PB8, GPIO_AF6_I2C4) },
+        .sdaPins = { I2CPINDEF(PD13, GPIO_AF4_I2C4), I2CPINDEF(PF15, GPIO_AF4_I2C4), I2CPINDEF(PB7, GPIO_AF6_I2C4), I2CPINDEF(PB9, GPIO_AF6_I2C4) },
+        .rcc = RCC_APB4(I2C4),
+        .ev_irq = I2C4_EV_IRQn,
+        .er_irq = I2C4_ER_IRQn,
+    },
+#endif
 #endif
 };
 
@@ -154,12 +201,6 @@ void I2C4_EV_IRQHandler(void)
 
 static volatile uint16_t i2cErrorCount = 0;
 
-static bool i2cOverClock;
-
-void i2cSetOverclock(uint8_t OverClock) {
-    i2cOverClock = (OverClock) ? true : false;
-}
-
 static bool i2cHandleHardwareFailure(I2CDevice device)
 {
     (void)device;
@@ -169,7 +210,8 @@ static bool i2cHandleHardwareFailure(I2CDevice device)
     return false;
 }
 
-bool i2cWriteBuffer(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len_, uint8_t *data)
+// Blocking write
+bool i2cWrite(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t data)
 {
     if (device == I2CINVALID || device > I2CDEV_COUNT) {
         return false;
@@ -184,9 +226,9 @@ bool i2cWriteBuffer(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len_,
     HAL_StatusTypeDef status;
 
     if (reg_ == 0xFF)
-        status = HAL_I2C_Master_Transmit(pHandle ,addr_ << 1, data, len_, I2C_DEFAULT_TIMEOUT);
+        status = HAL_I2C_Master_Transmit(pHandle ,addr_ << 1, &data, 1, I2C_DEFAULT_TIMEOUT);
     else
-        status = HAL_I2C_Mem_Write(pHandle ,addr_ << 1, reg_, I2C_MEMADD_SIZE_8BIT,data, len_, I2C_DEFAULT_TIMEOUT);
+        status = HAL_I2C_Mem_Write(pHandle ,addr_ << 1, reg_, I2C_MEMADD_SIZE_8BIT, &data, 1, I2C_DEFAULT_TIMEOUT);
 
     if (status != HAL_OK)
         return i2cHandleHardwareFailure(device);
@@ -194,11 +236,36 @@ bool i2cWriteBuffer(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len_,
     return true;
 }
 
-bool i2cWrite(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t data)
+// Non-blocking write
+bool i2cWriteBuffer(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len_, uint8_t *data)
 {
-    return i2cWriteBuffer(device, addr_, reg_, 1, &data);
+    if (device == I2CINVALID || device > I2CDEV_COUNT) {
+        return false;
+    }
+
+    I2C_HandleTypeDef *pHandle = &i2cDevice[device].handle;
+
+    if (!pHandle->Instance) {
+        return false;
+    }
+
+    HAL_StatusTypeDef status;
+
+    status = HAL_I2C_Mem_Write_IT(pHandle ,addr_ << 1, reg_, I2C_MEMADD_SIZE_8BIT,data, len_);
+
+    if (status == HAL_BUSY) {
+        return false;
+    }
+
+    if (status != HAL_OK)
+    {
+        return i2cHandleHardwareFailure(device);
+    }
+
+    return true;
 }
 
+// Blocking read
 bool i2cRead(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len, uint8_t* buf)
 {
     if (device == I2CINVALID || device > I2CDEV_COUNT) {
@@ -218,8 +285,58 @@ bool i2cRead(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len, uint8_t
     else
         status = HAL_I2C_Mem_Read(pHandle, addr_ << 1, reg_, I2C_MEMADD_SIZE_8BIT,buf, len, I2C_DEFAULT_TIMEOUT);
 
-    if (status != HAL_OK)
+    if (status != HAL_OK) {
         return i2cHandleHardwareFailure(device);
+    }
+
+    return true;
+}
+
+// Non-blocking read
+bool i2cReadBuffer(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len, uint8_t* buf)
+{
+    if (device == I2CINVALID || device > I2CDEV_COUNT) {
+        return false;
+    }
+
+    I2C_HandleTypeDef *pHandle = &i2cDevice[device].handle;
+
+    if (!pHandle->Instance) {
+        return false;
+    }
+
+    HAL_StatusTypeDef status;
+
+    status = HAL_I2C_Mem_Read_IT(pHandle, addr_ << 1, reg_, I2C_MEMADD_SIZE_8BIT,buf, len);
+
+    if (status == HAL_BUSY) {
+        return false;
+    }
+
+    if (status != HAL_OK) {
+        return i2cHandleHardwareFailure(device);
+    }
+
+    return true;
+}
+
+bool i2cBusy(I2CDevice device, bool *error)
+{
+    I2C_HandleTypeDef *pHandle = &i2cDevice[device].handle;
+
+    if (error) {
+        *error = pHandle->ErrorCode;
+    }
+
+    if (pHandle->State == HAL_I2C_STATE_READY)
+    {
+        if (__HAL_I2C_GET_FLAG(pHandle, I2C_FLAG_BUSY) == SET)
+        {
+            return true;
+        }
+
+        return false;
+    }
 
     return true;
 }
@@ -250,9 +367,12 @@ void i2cInit(I2CDevice device)
     i2cUnstick(scl, sda);
 
     // Init pins
-#ifdef STM32F7
+#if defined(STM32F7)
     IOConfigGPIOAF(scl, pDev->pullUp ? IOCFG_I2C_PU : IOCFG_I2C, GPIO_AF4_I2C);
     IOConfigGPIOAF(sda, pDev->pullUp ? IOCFG_I2C_PU : IOCFG_I2C, GPIO_AF4_I2C);
+#elif defined(STM32H7)
+    IOConfigGPIOAF(scl, pDev->pullUp ? IOCFG_I2C_PU : IOCFG_I2C, pDev->sclAF);
+    IOConfigGPIOAF(sda, pDev->pullUp ? IOCFG_I2C_PU : IOCFG_I2C, pDev->sdaAF);
 #else
     IOConfigGPIO(scl, IOCFG_AF_OD);
     IOConfigGPIO(sda, IOCFG_AF_OD);

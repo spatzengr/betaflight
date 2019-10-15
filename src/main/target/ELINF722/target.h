@@ -38,7 +38,6 @@
 #define GYRO_1_SPI_INSTANCE     SPI1
 
 #define USE_ACC_SPI_MPU6500
-#define ACC_1_ALIGN             CW0_DEG
 
 #define USE_EXTI
 #define USE_GYRO_EXTI
@@ -50,8 +49,6 @@
 #define USE_MAX7456
 #define MAX7456_SPI_INSTANCE    SPI2
 #define MAX7456_SPI_CS_PIN      PC8
-#define MAX7456_SPI_CLK         (SPI_CLOCK_STANDARD)
-#define MAX7456_RESTORE_CLK     (SPI_CLOCK_FAST)
 
 #define FLASH_CS_PIN            PB3
 #define FLASH_SPI_INSTANCE      SPI3

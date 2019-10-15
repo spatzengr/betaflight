@@ -48,11 +48,15 @@ static uint16_t timerChannel = 0;
 static uint8_t output;
 static uint8_t alternateFunction;
 
-#if !defined(STM32F7)
+#if !(defined(STM32F7) || defined(STM32H7))
 #error "Transponder (via HAL) not supported on this MCU."
 #endif
 
+#ifdef STM32H7
+DMA_RAM transponder_t transponder;
+#else
 transponder_t transponder;
+#endif
 bool transponderInitialised = false;
 
 static void TRANSPONDER_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
@@ -68,7 +72,7 @@ void transponderIrHardwareInit(ioTag_t ioTag, transponder_t *transponder)
         return;
     }
 
-    const timerHardware_t *timerHardware = timerGetByTag(ioTag);
+    const timerHardware_t *timerHardware = timerAllocate(ioTag, OWNER_TRANSPONDER, 0);
     TIM_TypeDef *timer = timerHardware->tim;
     timerChannel = timerHardware->channel;
     output = timerHardware->output;
@@ -81,10 +85,10 @@ void transponderIrHardwareInit(ioTag_t ioTag, transponder_t *transponder)
         return;
     }
 
-    dmaStream_t *dmaRef = dmaSpec->ref;
+    dmaResource_t *dmaRef = dmaSpec->ref;
     uint32_t dmaChannel = dmaSpec->channel;
 #else
-    dmaStream_t *dmaRef = timerHardware->dmaRef;
+    dmaResource_t *dmaRef = timerHardware->dmaRef;
     uint32_t dmaChannel = timerHardware->dmaChannel;
 #endif
 
@@ -119,9 +123,14 @@ void transponderIrHardwareInit(ioTag_t ioTag, transponder_t *transponder)
     IOConfigGPIOAF(transponderIO, IO_CONFIG(GPIO_MODE_AF_PP, GPIO_SPEED_FREQ_VERY_HIGH, GPIO_PULLDOWN), timerHardware->alternateFunction);
 
     __DMA1_CLK_ENABLE();
+    __DMA2_CLK_ENABLE();
 
     /* Set the parameters to be configured */
+#ifdef STM32H7
+    hdma_tim.Init.Request = dmaChannel;
+#else
     hdma_tim.Init.Channel = dmaChannel;
+#endif
     hdma_tim.Init.Direction = DMA_MEMORY_TO_PERIPH;
     hdma_tim.Init.PeriphInc = DMA_PINC_DISABLE;
     hdma_tim.Init.MemInc = DMA_MINC_ENABLE;
@@ -135,7 +144,7 @@ void transponderIrHardwareInit(ioTag_t ioTag, transponder_t *transponder)
     hdma_tim.Init.PeriphBurst = DMA_PBURST_SINGLE;
 
     /* Set hdma_tim instance */
-    hdma_tim.Instance = dmaRef;
+    hdma_tim.Instance = (DMA_ARCH_TYPE *)dmaRef;
 
     uint16_t dmaIndex = timerDmaIndex(timerChannel);
 

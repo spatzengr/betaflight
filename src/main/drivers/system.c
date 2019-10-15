@@ -20,6 +20,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "platform.h"
 
@@ -31,6 +32,15 @@
 
 #include "system.h"
 
+#if defined(STM32F3) || defined(STM32F4) || defined(STM32F7) || defined(STM32H7)
+// See "RM CoreSight Architecture Specification"
+// B2.3.10  "LSR and LAR, Software Lock Status Register and Software Lock Access Register"
+// "E1.2.11  LAR, Lock Access Register"
+
+#define DWT_LAR_UNLOCK_VALUE 0xC5ACCE55
+
+#endif
+
 // cycles per microsecond
 static uint32_t usTicks = 0;
 // current uptime for 1kHz systick timer. will rollover after 49 days. hopefully we won't care.
@@ -38,16 +48,34 @@ static volatile uint32_t sysTickUptime = 0;
 static volatile uint32_t sysTickValStamp = 0;
 // cached value of RCC->CSR
 uint32_t cachedRccCsrValue;
+static uint32_t cpuClockFrequency = 0;
 
 void cycleCounterInit(void)
 {
 #if defined(USE_HAL_DRIVER)
-    usTicks = HAL_RCC_GetSysClockFreq() / 1000000;
+    cpuClockFrequency = HAL_RCC_GetSysClockFreq();
 #else
     RCC_ClocksTypeDef clocks;
     RCC_GetClocksFreq(&clocks);
-    usTicks = clocks.SYSCLK_Frequency / 1000000;
+    cpuClockFrequency = clocks.SYSCLK_Frequency;
 #endif
+    usTicks = cpuClockFrequency / 1000000;
+
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+
+#if defined(DWT_LAR_UNLOCK_VALUE)
+#if defined(STM32F7) || defined(STM32H7)
+    DWT->LAR = DWT_LAR_UNLOCK_VALUE;
+#elif defined(STM32F3) || defined(STM32F4)
+    // Note: DWT_Type does not contain LAR member.
+#define DWT_LAR
+    __O uint32_t *DWTLAR = (uint32_t *)(DWT_BASE + 0x0FB0);
+    *(DWTLAR) = DWT_LAR_UNLOCK_VALUE;
+#endif
+#endif
+
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 
 // SysTick
@@ -113,6 +141,16 @@ uint32_t micros(void)
     } while (ms != sysTickUptime || cycle_cnt > sysTickValStamp);
 
     return (ms * 1000) + (usTicks * 1000 - cycle_cnt) / usTicks;
+}
+
+inline uint32_t getCycleCounter(void)
+{
+    return DWT->CYCCNT;
+}
+
+uint32_t clockCyclesToMicros(uint32_t clockCycles)
+{
+    return clockCycles / usTicks;
 }
 
 // Return system uptime in milliseconds (rollover in 49 days)
@@ -201,6 +239,25 @@ void failureMode(failureMode_e mode)
 #ifdef DEBUG
     systemReset();
 #else
-    systemResetToBootloader();
+    systemResetToBootloader(BOOTLOADER_REQUEST_ROM);
+#endif
+}
+
+void initialiseMemorySections(void)
+{
+#ifdef USE_ITCM_RAM
+    /* Load functions into ITCM RAM */
+    extern uint8_t tcm_code_start;
+    extern uint8_t tcm_code_end;
+    extern uint8_t tcm_code;
+    memcpy(&tcm_code_start, &tcm_code, (size_t) (&tcm_code_end - &tcm_code_start));
+#endif
+
+#ifdef USE_FAST_RAM
+    /* Load FAST_RAM variable intializers into DTCM RAM */
+    extern uint8_t _sfastram_data;
+    extern uint8_t _efastram_data;
+    extern uint8_t _sfastram_idata;
+    memcpy(&_sfastram_data, &_sfastram_idata, (size_t) (&_efastram_data - &_sfastram_data));
 #endif
 }

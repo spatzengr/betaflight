@@ -25,6 +25,8 @@
 
 #include "platform.h"
 
+#ifdef USE_TIMER
+
 #include "build/atomic.h"
 
 #include "common/utils.h"
@@ -255,15 +257,20 @@ const int8_t timerNumbers[USED_TIMER_COUNT] = {
 #undef _DEF
 };
 
-int8_t timerGetTIMNumber(const TIM_TypeDef *tim)
+int8_t timerGetNumberByIndex(uint8_t index)
 {
-    uint8_t index = lookupTimerIndex(tim);
-
     if (index < USED_TIMER_COUNT) {
         return timerNumbers[index];
     } else {
         return 0;
     }
+}
+
+int8_t timerGetTIMNumber(const TIM_TypeDef *tim)
+{
+    const uint8_t index = lookupTimerIndex(tim);
+
+    return timerGetNumberByIndex(index);
 }
 
 static inline uint8_t lookupChannelIndex(const uint16_t channel)
@@ -922,3 +929,4 @@ uint16_t timerGetPrescalerByDesiredHertz(TIM_TypeDef *tim, uint32_t hz)
     }
     return (uint16_t)((timerClock(tim) + hz / 2 ) / hz) - 1;
 }
+#endif

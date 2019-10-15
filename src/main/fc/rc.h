@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include "fc/rc_controls.h"
+
 typedef enum {
     INTERPOLATION_CHANNELS_RP,
     INTERPOLATION_CHANNELS_RPY,
@@ -40,6 +42,12 @@ void resetYawAxis(void);
 void initRcProcessing(void);
 bool isMotorsReversed(void);
 bool rcSmoothingIsEnabled(void);
-int rcSmoothingGetValue(int whichValue);
+rcSmoothingFilter_t *getRcSmoothingData(void);
 bool rcSmoothingAutoCalculate(void);
 bool rcSmoothingInitializationComplete(void);
+float getRawSetpoint(int axis);
+float getRawDeflection(int axis);
+float applyCurve(int axis, float deflection);
+uint32_t getRcFrameNumber();
+float getRcCurveSlope(int axis, float deflection);
+bool rcIsDuplicateFrame();

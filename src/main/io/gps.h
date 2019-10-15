@@ -75,6 +75,7 @@ typedef struct gpsConfig_s {
     gpsAutoBaud_e autoBaud;
     uint8_t gps_ublox_use_galileo;
     uint8_t gps_set_home_point_once;
+    uint8_t gps_use_3d_speed;
 } gpsConfig_t;
 
 PG_DECLARE(gpsConfig_t, gpsConfig);
@@ -93,6 +94,7 @@ typedef struct gpsLocation_s {
 
 typedef struct gpsSolutionData_s {
     gpsLocation_t llh;
+    uint16_t speed3d;              // speed in 0.1m/s
     uint16_t groundSpeed;           // speed in 0.1m/s
     uint16_t groundCourse;          // degrees * 10
     uint16_t hdop;                  // generic HDOP value (*100)
@@ -104,6 +106,8 @@ typedef enum {
     GPS_MESSAGE_STATE_INIT,
     GPS_MESSAGE_STATE_SBAS,
     GPS_MESSAGE_STATE_GALILEO,
+    GPS_MESSAGE_STATE_INITIALIZED,
+    GPS_MESSAGE_STATE_AIRBORNE,
     GPS_MESSAGE_STATE_ENTRY_COUNT
 } gpsMessageState_e;
 
@@ -132,13 +136,6 @@ extern int16_t GPS_angle[ANGLE_INDEX_COUNT];                // it's the angles t
 extern float dTnav;             // Delta Time in milliseconds for navigation computations, updated with every good GPS read
 extern float GPS_scaleLonDown;  // this is used to offset the shrinking longitude as we go towards the poles
 extern int16_t nav_takeoff_bearing;
-// navigation mode
-typedef enum {
-    NAV_MODE_NONE = 0,
-    NAV_MODE_POSHOLD,
-    NAV_MODE_WP
-} navigationMode_e;
-extern navigationMode_e nav_mode;          // Navigation mode
 
 typedef enum {
     GPS_DIRECT_TICK = 1 << 0,

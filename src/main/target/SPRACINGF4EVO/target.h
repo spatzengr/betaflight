@@ -58,13 +58,10 @@
 #define USE_ACC_SPI_MPU6500
 
 #ifndef SPRACINGF4EVODG
-#define ACC_1_ALIGN                 CW0_DEG
 #define GYRO_1_ALIGN                CW0_DEG
 #else
 #define GYRO_1_ALIGN                CW0_DEG
 #define GYRO_2_ALIGN                CW0_DEG
-#define ACC_1_ALIGN                 CW0_DEG
-#define ACC_2_ALIGN                 CW0_DEG
 #endif
 
 #define USE_BARO
@@ -136,7 +133,6 @@
 
 #if !defined(SPRACINGF4EVODG)
 #define USE_VTX_RTC6705
-#define VTX_RTC6705_OPTIONAL    // SPI3 on an F4 EVO may be used for RTC6705 VTX control.
 
 #define RTC6705_CS_PIN          SPI3_NSS_PIN
 #define RTC6705_SPI_INSTANCE    SPI3

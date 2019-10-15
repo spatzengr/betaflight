@@ -99,8 +99,6 @@
 
 #define GYRO_1_ALIGN            CW270_DEG
 #define GYRO_2_ALIGN            CW270_DEG
-#define ACC_1_ALIGN             CW270_DEG
-#define ACC_2_ALIGN             CW270_DEG
 
 #elif defined(SOULF4)
 
@@ -108,7 +106,6 @@
 #define GYRO_1_ALIGN            CW180_DEG
 
 #define USE_ACC_SPI_MPU6000
-#define ACC_1_ALIGN             CW180_DEG
 
 #define GYRO_1_CS_PIN           PA4
 #define GYRO_1_SPI_INSTANCE     SPI1
@@ -119,7 +116,6 @@
 #define GYRO_1_ALIGN            CW0_DEG
 
 #define USE_ACC_SPI_MPU6500
-#define ACC_1_ALIGN             CW0_DEG
 
 #define GYRO_1_CS_PIN           PA4
 #define GYRO_1_SPI_INSTANCE     SPI1
@@ -132,7 +128,6 @@
 #define GYRO_1_SPI_INSTANCE     SPI1
 
 #define USE_ACC_SPI_MPU6500
-#define ACC_1_ALIGN             CW0_DEG
 
 
 #else
@@ -144,7 +139,6 @@
 #define GYRO_1_CS_PIN           PA4
 #define GYRO_1_SPI_INSTANCE     SPI1
 #define GYRO_1_ALIGN            CW270_DEG
-#define ACC_1_ALIGN             CW270_DEG
 
 #endif
 
@@ -161,8 +155,6 @@
 #define USE_MAX7456
 #define MAX7456_SPI_INSTANCE    SPI2
 #define MAX7456_SPI_CS_PIN      PC8
-#define MAX7456_SPI_CLK         (SPI_CLOCK_STANDARD)
-#define MAX7456_RESTORE_CLK     (SPI_CLOCK_FAST)
 
 #define USE_BARO
 #define USE_BARO_MS5611

@@ -60,6 +60,8 @@
 #define USE_BARO_SPI_MS5611
 #define USE_BARO_BMP280
 #define USE_BARO_SPI_BMP280
+#define USE_BARO_BMP388
+#define USE_BARO_SPI_BMP388
 #define USE_BARO_LPS
 #define USE_BARO_SPI_LPS
 #define USE_BARO_QMP6988
@@ -70,8 +72,13 @@
 
 #define USE_FLASHFS
 #define USE_FLASH_M25P16
+#define USE_FLASH_W25M
+#define USE_FLASH_W25N01G          // 1G NAND flash support
 
 #define USE_MAX7456
+
+#define USE_VTX_RTC6705
+#define USE_VTX_RTC6705_SOFTSPI
 
 #define USE_TRANSPONDER
 
@@ -99,9 +106,6 @@
 
 #define USE_ADC
 
-#if defined(STM32F4)
-//We currently only have stdperiph drivers for this
-
 #define USE_RX_SPI
 
 #define USE_RX_FRSKY_SPI_D
@@ -113,4 +117,5 @@
 
 #define USE_RX_FLYSKY
 #define USE_RX_FLYSKY_SPI_LED
-#endif
+
+#define USE_CUSTOM_DEFAULTS

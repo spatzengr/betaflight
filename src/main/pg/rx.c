@@ -55,6 +55,7 @@ void pgResetFn_rxConfig(rxConfig_t *rxConfig)
         .rssi_scale = RSSI_SCALE_DEFAULT,
         .rssi_offset = 0,
         .rssi_invert = 0,
+        .rssi_src_frame_lpf_period = 30,
         .rcInterpolation = RC_SMOOTHING_AUTO,
         .rcInterpolationChannels = INTERPOLATION_CHANNELS_RPYT,
         .rcInterpolationInterval = 19,
@@ -68,6 +69,9 @@ void pgResetFn_rxConfig(rxConfig_t *rxConfig)
         .rc_smoothing_input_type = RC_SMOOTHING_INPUT_BIQUAD,
         .rc_smoothing_derivative_type = RC_SMOOTHING_DERIVATIVE_BIQUAD,
         .rc_smoothing_auto_factor = 10,
+        .srxl2_unit_id = 1,
+        .srxl2_baud_fast = true,
+        .sbus_baud_fast = false,
     );
 
 #ifdef RX_CHANNELS_TAER

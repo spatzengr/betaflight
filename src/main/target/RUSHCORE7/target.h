@@ -112,7 +112,7 @@
 
 #define USE_ADC
 #define ADC_INSTANCE                        ADC3
-#define ADC3_DMA_STREAM                     DMA2_Stream0
+#define ADC3_DMA_OPT                        0
 
 #define VBAT_ADC_PIN                        PC1
 #define CURRENT_METER_ADC_PIN               PC3
@@ -128,10 +128,6 @@
 #define DEFAULT_FEATURES                    FEATURE_OSD
 #define SERIALRX_UART                       SERIAL_PORT_USART2
 #define SERIALRX_PROVIDER                   SERIALRX_SBUS
-
-
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
-
 
 #define TARGET_IO_PORTA         0xffff
 #define TARGET_IO_PORTB         0xffff

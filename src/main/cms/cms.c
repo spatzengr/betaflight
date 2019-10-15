@@ -50,6 +50,7 @@
 
 #include "drivers/system.h"
 #include "drivers/time.h"
+#include "drivers/motor.h"
 
 // For rcData, stopAllMotors, stopPwmAllMotors
 #include "config/feature.h"
@@ -250,13 +251,13 @@ static void cmsPageSelect(displayPort_t *instance, int8_t newpage)
 {
     currentCtx.page = (newpage + pageCount) % pageCount;
     pageTop = &currentCtx.menu->entries[currentCtx.page * maxMenuItems];
-
+    cmsUpdateMaxRow(instance);
+ 
     const OSD_Entry *p;
     int i;
     for (p = pageTop, i = 0; (p <= pageTop + pageMaxRow); p++, i++) {
         runtimeEntryFlags[i] = p->flags;
     }
-    cmsUpdateMaxRow(instance);
     displayClearScreen(instance);
 }
 
@@ -776,8 +777,9 @@ long cmsMenuExit(displayPort_t *pDisplay, const void *ptr)
 
         cmsTraverseGlobalExit(&menuMain);
 
-        if (currentCtx.menu->onExit)
+        if (currentCtx.menu->onExit) {
             currentCtx.menu->onExit((OSD_Entry *)NULL); // Forced exit
+        }
 
         if ((exitType == CMS_POPUP_SAVE) || (exitType == CMS_POPUP_SAVEREBOOT)) {
             // traverse through the menu stack and call their onExit functions
@@ -800,14 +802,14 @@ long cmsMenuExit(displayPort_t *pDisplay, const void *ptr)
     displayRelease(pDisplay);
     currentCtx.menu = NULL;
 
-    if ((exitType == CMS_EXIT_SAVEREBOOT) || (exitType == CMS_POPUP_SAVEREBOOT)) {
+    if ((exitType == CMS_EXIT_SAVEREBOOT) || (exitType == CMS_POPUP_SAVEREBOOT) || (exitType == CMS_POPUP_EXITREBOOT)) {
         displayClearScreen(pDisplay);
         displayWrite(pDisplay, 5, 3, "REBOOTING...");
 
         displayResync(pDisplay); // Was max7456RefreshAll(); why at this timing?
 
         stopMotors();
-        stopPwmAllMotors();
+        motorShutdown();
         delay(200);
 
         systemReset();
@@ -832,8 +834,9 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
     uint16_t res = BUTTON_TIME;
     const OSD_Entry *p;
 
-    if (!currentCtx.menu)
+    if (!currentCtx.menu) {
         return res;
+    }
 
     if (key == CMS_KEY_MENU) {
         cmsMenuOpen();
@@ -851,7 +854,11 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
 
     if (key == CMS_KEY_SAVEMENU) {
         osdElementEditing = false;
-        cmsMenuChange(pDisplay, &cmsx_menuSaveExit);
+        if (getRebootRequired()) {
+            cmsMenuChange(pDisplay, &cmsx_menuSaveExitReboot);
+        } else {
+            cmsMenuChange(pDisplay, &cmsx_menuSaveExit);
+        }
         return BUTTON_PAUSE;
     }
 
@@ -868,8 +875,9 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
         currentCtx.cursorRow--;
 
         // Skip non-title labels
-        if ((pageTop + currentCtx.cursorRow)->type == OME_Label && currentCtx.cursorRow > 0)
+        if ((pageTop + currentCtx.cursorRow)->type == OME_Label && currentCtx.cursorRow > 0) {
             currentCtx.cursorRow--;
+        }
 
         if (currentCtx.cursorRow == -1 || (pageTop + currentCtx.cursorRow)->type == OME_Label) {
             // Goto previous page
@@ -878,8 +886,9 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
         }
     }
 
-    if ((key == CMS_KEY_DOWN || key == CMS_KEY_UP) && (!osdElementEditing))
+    if ((key == CMS_KEY_DOWN || key == CMS_KEY_UP) && (!osdElementEditing)) {
         return res;
+    }
 
     p = pageTop + currentCtx.cursorRow;
 
@@ -895,8 +904,9 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
             long retval;
             if (p->func && key == CMS_KEY_RIGHT) {
                 retval = p->func(pDisplay, p->data);
-                if (retval == MENU_CHAIN_BACK)
+                if (retval == MENU_CHAIN_BACK) {
                     cmsMenuBack(pDisplay);
+                }
                 res = BUTTON_PAUSE;
             }
             break;
@@ -917,11 +927,12 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
         case OME_Bool:
             if (p->data) {
                 uint8_t *val = p->data;
-                if (key == CMS_KEY_RIGHT)
-                    *val = 1;
-                else
-                    *val = 0;
+                const uint8_t previousValue = *val;
+                *val = (key == CMS_KEY_RIGHT) ? 1 : 0;
                 SET_PRINTVALUE(runtimeEntryFlags[currentCtx.cursorRow]);
+                if ((p->flags & REBOOT_REQUIRED) && (*val != previousValue)) {
+                    setRebootRequired();
+                }
             }
             break;
 
@@ -929,6 +940,7 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
         case OME_VISIBLE:
             if (p->data) {
                 uint16_t *val = (uint16_t *)p->data;
+                const uint16_t previousValue = *val;
                 if ((key == CMS_KEY_RIGHT) && (!osdElementEditing)) {
                     osdElementEditing = true;
                     osdProfileCursor = 1;
@@ -953,6 +965,9 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
                     }
                 }
                 SET_PRINTVALUE(runtimeEntryFlags[currentCtx.cursorRow]);
+                if ((p->flags & REBOOT_REQUIRED) && (*val != previousValue)) {
+                    setRebootRequired();
+                }
             }
             break;
 #endif
@@ -961,15 +976,21 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
         case OME_FLOAT:
             if (p->data) {
                 OSD_UINT8_t *ptr = p->data;
+                const uint16_t previousValue = *ptr->val;
                 if (key == CMS_KEY_RIGHT) {
-                    if (*ptr->val < ptr->max)
+                    if (*ptr->val < ptr->max) {
                         *ptr->val += ptr->step;
+                    }
                 }
                 else {
-                    if (*ptr->val > ptr->min)
+                    if (*ptr->val > ptr->min) {
                         *ptr->val -= ptr->step;
+                    }
                 }
                 SET_PRINTVALUE(runtimeEntryFlags[currentCtx.cursorRow]);
+                if ((p->flags & REBOOT_REQUIRED) && (*ptr->val != previousValue)) {
+                    setRebootRequired();
+                }
                 if (p->func) {
                     p->func(pDisplay, p);
                 }
@@ -979,33 +1000,44 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
         case OME_TAB:
             if (p->type == OME_TAB) {
                 OSD_TAB_t *ptr = p->data;
+                const uint8_t previousValue = *ptr->val;
 
                 if (key == CMS_KEY_RIGHT) {
-                    if (*ptr->val < ptr->max)
+                    if (*ptr->val < ptr->max) {
                         *ptr->val += 1;
-                }
-                else {
-                    if (*ptr->val > 0)
+                    }
+                } else {
+                    if (*ptr->val > 0) {
                         *ptr->val -= 1;
+                    }
                 }
-                if (p->func)
+                if (p->func) {
                     p->func(pDisplay, p->data);
+                }
                 SET_PRINTVALUE(runtimeEntryFlags[currentCtx.cursorRow]);
+                if ((p->flags & REBOOT_REQUIRED) && (*ptr->val != previousValue)) {
+                    setRebootRequired();
+                }
             }
             break;
 
         case OME_INT8:
             if (p->data) {
                 OSD_INT8_t *ptr = p->data;
+                const int8_t previousValue = *ptr->val;
                 if (key == CMS_KEY_RIGHT) {
-                    if (*ptr->val < ptr->max)
+                    if (*ptr->val < ptr->max) {
                         *ptr->val += ptr->step;
-                }
-                else {
-                    if (*ptr->val > ptr->min)
+                    }
+                } else {
+                    if (*ptr->val > ptr->min) {
                         *ptr->val -= ptr->step;
+                    }
                 }
                 SET_PRINTVALUE(runtimeEntryFlags[currentCtx.cursorRow]);
+                if ((p->flags & REBOOT_REQUIRED) && (*ptr->val != previousValue)) {
+                    setRebootRequired();
+                }
                 if (p->func) {
                     p->func(pDisplay, p);
                 }
@@ -1015,15 +1047,20 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
         case OME_UINT16:
             if (p->data) {
                 OSD_UINT16_t *ptr = p->data;
+                const uint16_t previousValue = *ptr->val;
                 if (key == CMS_KEY_RIGHT) {
-                    if (*ptr->val < ptr->max)
+                    if (*ptr->val < ptr->max) {
                         *ptr->val += ptr->step;
-                }
-                else {
-                    if (*ptr->val > ptr->min)
+                    }
+                } else {
+                    if (*ptr->val > ptr->min) {
                         *ptr->val -= ptr->step;
+                    }
                 }
                 SET_PRINTVALUE(runtimeEntryFlags[currentCtx.cursorRow]);
+                if ((p->flags & REBOOT_REQUIRED) && (*ptr->val != previousValue)) {
+                    setRebootRequired();
+                }
                 if (p->func) {
                     p->func(pDisplay, p);
                 }
@@ -1033,15 +1070,20 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
         case OME_INT16:
             if (p->data) {
                 OSD_INT16_t *ptr = p->data;
+                const int16_t previousValue = *ptr->val;
                 if (key == CMS_KEY_RIGHT) {
-                    if (*ptr->val < ptr->max)
+                    if (*ptr->val < ptr->max) {
                         *ptr->val += ptr->step;
-                }
-                else {
-                    if (*ptr->val > ptr->min)
+                    }
+                } else {
+                    if (*ptr->val > ptr->min) {
                         *ptr->val -= ptr->step;
+                    }
                 }
                 SET_PRINTVALUE(runtimeEntryFlags[currentCtx.cursorRow]);
+                if ((p->flags & REBOOT_REQUIRED) && (*ptr->val != previousValue)) {
+                    setRebootRequired();
+                }
                 if (p->func) {
                     p->func(pDisplay, p);
                 }
@@ -1079,18 +1121,18 @@ uint16_t cmsHandleKeyWithRepeat(displayPort_t *pDisplay, cms_key_e key, int repe
     return ret;
 }
 
-void cmsUpdate(uint32_t currentTimeUs)
+static void cmsUpdate(uint32_t currentTimeUs)
 {
+    if (IS_RC_MODE_ACTIVE(BOXPARALYZE)
 #ifdef USE_RCDEVICE
-    if(rcdeviceInMenu) {
-        return ;
-    }
+        || rcdeviceInMenu
 #endif
 #ifdef USE_USB_CDC_HID
-    if (getBatteryCellCount() == 0 && usbDevConfig()->type == COMPOSITE) {
+        || (getBatteryCellCount() == 0 && usbDevConfig()->type == COMPOSITE)
+#endif
+       ) {
         return;
     }
-#endif
 
     static int16_t rcDelayMs = BUTTON_TIME;
     static int holdCount = 1;

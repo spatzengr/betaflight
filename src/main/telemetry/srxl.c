@@ -50,9 +50,11 @@
 #include "io/gps.h"
 
 #include "pg/rx.h"
+#include "pg/motor.h"
 
 #include "rx/rx.h"
 #include "rx/spektrum.h"
+#include "rx/srxl2.h"
 #include "io/spektrum_vtx_control.h"
 
 #include "sensors/battery.h"
@@ -63,7 +65,7 @@
 #include "telemetry/srxl.h"
 
 #include "drivers/vtx_common.h"
-#include "drivers/pwm_output.h"
+#include "drivers/dshot.h"
 
 #include "io/vtx_tramp.h"
 #include "io/vtx_smartaudio.h"
@@ -82,24 +84,37 @@
 #define SRXL_FRAMETYPE_GPS_STAT     0x17
 
 static bool srxlTelemetryEnabled;
+static bool srxl2 = false;
 static uint8_t srxlFrame[SRXL_FRAME_SIZE_MAX];
 
 static void srxlInitializeFrame(sbuf_t *dst)
 {
-    dst->ptr = srxlFrame;
-    dst->end = ARRAYEND(srxlFrame);
+    if (srxl2) {
+#if defined(USE_SERIALRX_SRXL2)
+      srxl2InitializeFrame(dst);
+#endif
+    } else {
+        dst->ptr = srxlFrame;
+        dst->end = ARRAYEND(srxlFrame);
 
-    sbufWriteU8(dst, SRXL_ADDRESS_FIRST);
-    sbufWriteU8(dst, SRXL_ADDRESS_SECOND);
-    sbufWriteU8(dst, SRXL_PACKET_LENGTH);
+        sbufWriteU8(dst, SRXL_ADDRESS_FIRST);
+        sbufWriteU8(dst, SRXL_ADDRESS_SECOND);
+        sbufWriteU8(dst, SRXL_PACKET_LENGTH);
+    }
 }
 
 static void srxlFinalize(sbuf_t *dst)
 {
-    crc16_ccitt_sbuf_append(dst, &srxlFrame[3]); // start at byte 3, since CRC does not include device address and packet length
-    sbufSwitchToReader(dst, srxlFrame);
-    // write the telemetry frame to the receiver.
-    srxlRxWriteTelemetryData(sbufPtr(dst), sbufBytesRemaining(dst));
+    if (srxl2) {
+#if defined(USE_SERIALRX_SRXL2)
+      srxl2FinalizeFrame(dst);
+#endif
+    } else {
+        crc16_ccitt_sbuf_append(dst, &srxlFrame[3]); // start at byte 3, since CRC does not include device address and packet length
+        sbufSwitchToReader(dst, srxlFrame);
+        // write the telemetry frame to the receiver.
+        srxlRxWriteTelemetryData(sbufPtr(dst), sbufBytesRemaining(dst));
+    }
 }
 
 /*
@@ -179,7 +194,7 @@ uint16_t getMotorAveragePeriod(void)
     }
 #endif
 
-#if defined( USE_DSHOT_TELEMETRY)
+#if defined(USE_DSHOT_TELEMETRY)
     if (useDshotTelemetry) {
         uint16_t motors = getMotorCount();
 
@@ -534,14 +549,17 @@ static void collectVtxTmData(spektrumVtx_t * vtx)
     vtxDeviceType = vtxCommonGetDeviceType(vtxDevice);
 
     // Collect all data from VTX, if VTX is ready
+    unsigned vtxStatus;
     if (vtxDevice == NULL || !(vtxCommonGetBandAndChannel(vtxDevice, &vtx->band, &vtx->channel) &&
-           vtxCommonGetPitMode(vtxDevice, &vtx->pitMode) &&
+           vtxCommonGetStatus(vtxDevice, &vtxStatus) &&
            vtxCommonGetPowerIndex(vtxDevice, &vtx->power)) )
         {
             vtx->band    = 0;
             vtx->channel = 0;
             vtx->power   = 0;
             vtx->pitMode = 0;
+        } else {
+            vtx->pitMode = (vtxStatus & VTX_STATUS_PIT_MODE) ? 1 : 0;
         }
 
     vtx->powerValue = 0;
@@ -557,25 +575,22 @@ static void convertVtxPower(spektrumVtx_t * vtx)
     {
         uint8_t const * powerIndexTable = NULL;
 
+        vtxCommonLookupPowerValue(vtxCommonDevice(), vtx->power, &vtx->powerValue);
         switch (vtxDeviceType) {
 
 #if defined(USE_VTX_TRAMP)
         case VTXDEV_TRAMP:
             powerIndexTable = vtxTrampPi;
-            vtx->powerValue = vtxCommonLookupPowerValue(vtxCommonDevice(), vtx->power - 1);  // Lookup the device power value, 0-based table vs 1-based index. Doh.
             break;
 #endif
 #if defined(USE_VTX_SMARTAUDIO)
         case VTXDEV_SMARTAUDIO:
             powerIndexTable = vtxSaPi;
-            vtx->powerValue = vtxCommonLookupPowerValue(vtxCommonDevice(), vtx->power - 1);  // Lookup the device power value, 0-based table vs 1-based index. Doh.
             break;
 #endif
 #if defined(USE_VTX_RTC6705)
         case VTXDEV_RTC6705:
             powerIndexTable = vtxRTC6705Pi;
-            // No power value table available.Hard code some "knowledge" here. Doh.
-            vtx->powerValue = vtx->power == VTX_6705_POWER_200 ? 200 : 25;
             break;
 #endif
 
@@ -759,7 +774,18 @@ void initSrxlTelemetry(void)
 {
     // check if there is a serial port open for SRXL telemetry (ie opened by the SRXL RX)
     // and feature is enabled, if so, set SRXL telemetry enabled
-    srxlTelemetryEnabled = srxlRxIsActive();
+  if (srxlRxIsActive()) {
+    srxlTelemetryEnabled = true;
+    srxl2 = false; 
+#if defined(USE_SERIALRX_SRXL2)
+  } else if (srxl2RxIsActive()) {
+    srxlTelemetryEnabled = true;
+    srxl2 = true;
+#endif
+  } else {
+    srxlTelemetryEnabled = false;
+    srxl2 = false;
+  }
  }
 
 bool checkSrxlTelemetryState(void)
@@ -772,8 +798,16 @@ bool checkSrxlTelemetryState(void)
  */
 void handleSrxlTelemetry(timeUs_t currentTimeUs)
 {
-  if (srxlTelemetryBufferEmpty()) {
-      processSrxl(currentTimeUs);
+  if (srxl2) {
+#if defined(USE_SERIALRX_SRXL2)
+      if (srxl2TelemetryRequested()) {
+          processSrxl(currentTimeUs);
+      }
+#endif
+  } else {
+      if (srxlTelemetryBufferEmpty()) {
+          processSrxl(currentTimeUs);
+      }
   }
 }
 #endif

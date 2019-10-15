@@ -23,8 +23,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "drivers/dma.h"
 #include "drivers/io_types.h"
 #include "drivers/rcc_types.h"
+#include "drivers/resource.h"
 #include "drivers/timer_def.h"
 
 #include "pg/timerio.h"
@@ -46,6 +48,11 @@ typedef uint32_t timCCER_t;
 typedef uint32_t timSR_t;
 typedef uint32_t timCNT_t;
 #elif defined(STM32F3)
+typedef uint32_t timCCR_t;
+typedef uint32_t timCCER_t;
+typedef uint32_t timSR_t;
+typedef uint32_t timCNT_t;
+#elif defined(STM32H7)
 typedef uint32_t timCCR_t;
 typedef uint32_t timCCER_t;
 typedef uint32_t timSR_t;
@@ -104,35 +111,28 @@ typedef struct timerHardware_s {
     uint8_t channel;
     timerUsageFlag_e usageFlags;
     uint8_t output;
-#if defined(STM32F3) || defined(STM32F4) || defined(STM32F7)
+#if defined(STM32F3) || defined(STM32F4) || defined(STM32F7) || defined(STM32H7)
     uint8_t alternateFunction;
 #endif
-#if defined(USE_DSHOT) || defined(USE_LED_STRIP) || defined(USE_TRANSPONDER)
+
+#if defined(USE_TIMER_DMA)
+
 #if defined(USE_DMA_SPEC)
-#if defined(STM32F4) || defined(STM32F7)
-    DMA_Stream_TypeDef *dmaRefConfigured;
+    dmaResource_t *dmaRefConfigured;
+#if defined(STM32F4) || defined(STM32F7) || defined(STM32H7)
     uint32_t dmaChannelConfigured;
-#else
-    DMA_Channel_TypeDef *dmaRefConfigured;
 #endif
-#else
-#if defined(STM32F4) || defined(STM32F7)
-    DMA_Stream_TypeDef *dmaRef;
-    uint32_t dmaChannel;
-#else
-    DMA_Channel_TypeDef *dmaRef;
+#else // USE_DMA_SPEC
+    dmaResource_t *dmaRef;
+#if defined(STM32F4) || defined(STM32F7) || defined(STM32H7)
+    uint32_t dmaChannel; // XXX Can be much smaller (e.g. uint8_t)
 #endif
-#endif
-#if defined(STM32F3) || defined(STM32F4) || defined(STM32F7)
-    // TIMUP
-#ifdef STM32F3
-    DMA_Channel_TypeDef *dmaTimUPRef;
-#else
-    DMA_Stream_TypeDef *dmaTimUPRef;
+#endif // USE_DMA_SPEC
+    dmaResource_t *dmaTimUPRef;
+#if defined(STM32F4) || defined(STM32F7) || defined(STM32H7)
     uint32_t dmaTimUPChannel;
 #endif
     uint8_t dmaTimUPIrqHandler;
-#endif
 #endif
 } timerHardware_t;
 
@@ -158,6 +158,9 @@ typedef enum {
 #define HARDWARE_TIMER_DEFINITION_COUNT 14
 #elif defined(STM32F7)
 #define HARDWARE_TIMER_DEFINITION_COUNT 14
+#elif defined(STM32H7)
+#define HARDWARE_TIMER_DEFINITION_COUNT 17
+#define TIMUP_TIMERS ( BIT(1) | BIT(2) | BIT(3) | BIT(4) | BIT(5) | BIT(6) | BIT(7) | BIT(8) | BIT(15) | BIT(16) | BIT(17) )
 #endif
 
 #define MHZ_TO_HZ(x) ((x) * 1000000)
@@ -166,14 +169,27 @@ typedef enum {
 extern const timerHardware_t timerHardware[];
 #endif
 
-#if defined(USE_TIMER_MGMT)
-#if defined(STM32F4)
 
+#if defined(USE_TIMER_MGMT)
+#if defined(STM32F3)
+
+#define FULL_TIMER_CHANNEL_COUNT 88
+
+#elif defined(STM32F4)
+
+#if defined(STM32F411xE)
+#define FULL_TIMER_CHANNEL_COUNT 59
+#else
 #define FULL_TIMER_CHANNEL_COUNT 78
+#endif
 
 #elif defined(STM32F7)
 
 #define FULL_TIMER_CHANNEL_COUNT 78
+
+#elif defined(STM32H7)
+
+#define FULL_TIMER_CHANNEL_COUNT 87
 
 #endif
 
@@ -184,15 +200,23 @@ extern const timerHardware_t fullTimerHardware[];
 
 #if defined(STM32F7) || defined(STM32F4)
 
+#if defined(STM32F411xE)
+#define USED_TIMERS ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(5) | TIM_N(6) | TIM_N(7) | TIM_N(9) | TIM_N(10) | TIM_N(11) )
+#else
 #define USED_TIMERS ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(5) | TIM_N(6) | TIM_N(7) | TIM_N(8) | TIM_N(9) | TIM_N(10) | TIM_N(11) | TIM_N(12) | TIM_N(13) | TIM_N(14) )
+#endif
 
 #elif defined(STM32F3)
 
-#define USED_TIMERS ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(5) | TIM_N(6) | TIM_N(7) | TIM_N(8) | TIM_N(15) | TIM_N(16) | TIM_N(17) )
+#define USED_TIMERS ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(6) | TIM_N(7) | TIM_N(8) | TIM_N(15) | TIM_N(16) | TIM_N(17) )
 
 #elif defined(STM32F1)
 
 #define USED_TIMERS ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) )
+
+#elif defined(STM32H7)
+
+#define USED_TIMERS ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(5) | TIM_N(6) | TIM_N(7) | TIM_N(8) | TIM_N(12) | TIM_N(13) | TIM_N(14) | TIM_N(15) | TIM_N(16) | TIM_N(17) )
 
 #else
     #error "No timer / channel tag definition found for CPU"
@@ -258,9 +282,13 @@ rccPeriphTag_t timerRCC(TIM_TypeDef *tim);
 uint8_t timerInputIrq(TIM_TypeDef *tim);
 
 #if defined(USE_TIMER_MGMT)
+extern const resourceOwner_t freeOwner;
+
 timerIOConfig_t *timerIoConfigByTag(ioTag_t ioTag);
+const resourceOwner_t *timerGetOwner(int8_t timerNumber, uint16_t timerChannel);
 #endif
 const timerHardware_t *timerGetByTag(ioTag_t ioTag);
+const timerHardware_t *timerAllocate(ioTag_t ioTag, resourceOwner_e owner, uint8_t resourceIndex);
 const timerHardware_t *timerGetByTagAndIndex(ioTag_t ioTag, unsigned timerIndex);
 ioTag_t timerioTagGetByUsage(timerUsageFlag_e usageFlag, uint8_t index);
 
@@ -281,5 +309,6 @@ uint16_t timerGetPrescalerByDesiredHertz(TIM_TypeDef *tim, uint32_t hz);
 uint16_t timerGetPrescalerByDesiredMhz(TIM_TypeDef *tim, uint16_t mhz);
 uint16_t timerGetPeriodByPrescaler(TIM_TypeDef *tim, uint16_t prescaler, uint32_t hz);
 
+int8_t timerGetNumberByIndex(uint8_t index);
 int8_t timerGetTIMNumber(const TIM_TypeDef *tim);
 uint8_t timerLookupChannelIndex(const uint16_t channel);

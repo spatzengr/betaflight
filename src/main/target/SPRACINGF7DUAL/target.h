@@ -31,7 +31,6 @@
 
 #define TEST_SOUND // for factory testing audio output
 
-#define USE_MULTI_GYRO
 //#define DEBUG_MODE DEBUG_DUAL_GYRO_DIFF
 
 #define ENABLE_DSHOT_DMAR       true
@@ -58,16 +57,12 @@
 
 #if (SPRACINGF7DUAL_REV >= 2)
 #define GYRO_1_ALIGN        CW0_DEG
-#define ACC_1_ALIGN         CW0_DEG
 
 #define GYRO_2_ALIGN        CW270_DEG
-#define ACC_2_ALIGN         CW270_DEG
 #else
 #define GYRO_1_ALIGN        CW180_DEG
-#define ACC_1_ALIGN         CW180_DEG
 
 #define GYRO_2_ALIGN        CW270_DEG
-#define ACC_2_ALIGN         CW270_DEG
 #endif
 
 #define GYRO_CONFIG_USE_GYRO_DEFAULT GYRO_CONFIG_USE_GYRO_BOTH
@@ -150,7 +145,6 @@
 
 #define USE_VTX_RTC6705
 #define USE_VTX_RTC6705_SOFTSPI
-#define VTX_RTC6705_OPTIONAL    // VTX/OSD board is OPTIONAL
 
 #define RTC6705_SPI_MOSI_PIN                PB0  // Shared with PWM8
 #define RTC6705_CS_PIN                      PB6  // Shared with PWM5

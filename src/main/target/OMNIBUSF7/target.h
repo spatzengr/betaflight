@@ -44,7 +44,6 @@
 //GYRO & ACC--------------------------------
 #define USE_ACC
 #define USE_GYRO
-#define USE_MULTI_GYRO
 // ICM-20608-G
 #define USE_ACC_SPI_MPU6500
 #define USE_GYRO_SPI_MPU6500
@@ -63,9 +62,6 @@
 #define GYRO_2_SPI_INSTANCE     SPI1
 #define GYRO_2_CS_PIN           PA4
 #define GYRO_1_ALIGN            CW90_DEG
-#define GYRO_2_ALIGN            ALIGN_DEFAULT
-#define ACC_1_ALIGN             CW90_DEG
-#define ACC_2_ALIGN             ALIGN_DEFAULT
 #define GYRO_1_EXTI_PIN         PD0           // MPU6000
 #define GYRO_2_EXTI_PIN         PE8           // ICM20608
 
@@ -75,9 +71,7 @@
 #define GYRO_2_SPI_INSTANCE     SPI3
 #define GYRO_2_CS_PIN           PA15
 #define GYRO_1_ALIGN            CW90_DEG
-#define ACC_1_ALIGN             CW90_DEG
 #define GYRO_2_ALIGN            CW270_DEG
-#define ACC_2_ALIGN             CW270_DEG
 #define GYRO_1_EXTI_PIN         PD0           // Assume the same as OMNIBUSF7V2, need to verify
 #define GYRO_2_EXTI_PIN         PE8           // Ditto
 
@@ -86,10 +80,6 @@
 #define GYRO_1_CS_PIN           PA15
 #define GYRO_2_SPI_INSTANCE     SPI1
 #define GYRO_2_CS_PIN           PA4
-#define GYRO_1_ALIGN            ALIGN_DEFAULT
-#define ACC_1_ALIGN             ALIGN_DEFAULT
-#define GYRO_2_ALIGN            ALIGN_DEFAULT
-#define ACC_2_ALIGN             ALIGN_DEFAULT
 #define GYRO_1_EXTI_PIN         PE8           // ICM20608
 #define GYRO_2_EXTI_PIN         PD0           // MPU6000
 #endif
@@ -169,8 +159,6 @@
 #define USE_MAX7456
 #define MAX7456_SPI_INSTANCE    SPI2
 #define MAX7456_SPI_CS_PIN      SPI2_NSS_PIN
-#define MAX7456_SPI_CLK         (SPI_CLOCK_STANDARD) // 10MHz
-#define MAX7456_RESTORE_CLK     (SPI_CLOCK_FAST)
 
 #ifdef FPVM_BETAFLIGHTF7
 //FLASH--------------------------------------

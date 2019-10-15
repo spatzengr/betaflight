@@ -27,12 +27,29 @@
 
 #include "telemetry/telemetry.h"
 
+#include "pg/pinio.h"
 #include "pg/piniobox.h"
+
+#include "hardware_revision.h"
+
+#include "sensors/gyro.h"
+
+#include "pg/gyrodev.h"
 
 void targetConfiguration(void)
 {	
+    if (hardwareRevision == FF_RACEPIT_REV_1) {
+        gyroDeviceConfigMutable(0)->alignment = CW180_DEG;
+    }
+    else {
+        gyroDeviceConfigMutable(0)->alignment = CW90_DEG_FLIP;
+    }
+
     telemetryConfigMutable()->halfDuplex = false;
+
+    pinioConfigMutable()->config[1] = PINIO_CONFIG_OUT_INVERTED | PINIO_CONFIG_MODE_OUT_PP;
 	
     pinioBoxConfigMutable()->permanentId[0] = 40;
+    pinioBoxConfigMutable()->permanentId[1] = 41;
 }
 #endif
