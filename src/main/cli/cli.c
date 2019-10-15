@@ -2436,7 +2436,7 @@ static char *formatVtxTablePowerValues(const uint16_t *levels, int count)
 
 static void printVtxTablePowerValues(dumpFlags_t dumpMask, const vtxTableConfig_t *currentConfig, const vtxTableConfig_t *defaultConfig)
 {
-    char *fmt = "vtxtable powervalues %s";
+    char *fmt = "vtxtable powervalues%s";
     bool equalsDefault = false;
     if (defaultConfig) {
         equalsDefault = true;
@@ -5792,7 +5792,7 @@ const clicmd_t cmdTable[] = {
 #endif
 #endif
 #ifdef USE_VTX_TABLE
-    CLI_COMMAND_DEF("vtxtable", "vtx frequency able", "<band> <bandname> <bandletter> <freq> ... <freq>\r\n", cliVtxTable),
+    CLI_COMMAND_DEF("vtxtable", "vtx frequency table", "<band> <bandname> <bandletter> <freq> ... <freq>\r\n", cliVtxTable),
 #endif
 };
 

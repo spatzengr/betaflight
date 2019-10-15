@@ -239,7 +239,7 @@
 #endif
 #endif
 
-#if (!defined(USE_FLASHFS) || !defined(USE_RTC_TIME) || !defined(USE_USB_MSC))
+#if (!defined(USE_FLASHFS) || !defined(USE_RTC_TIME) || !defined(USE_USB_MSC) || !defined(USE_PERSISTENT_OBJECTS))
 #undef USE_PERSISTENT_MSC_RTC
 #endif
 
@@ -289,6 +289,12 @@
 #undef BEEPER_PWM_HZ
 #endif
 
+#if defined(USE_DSHOT) || defined(USE_LED_STRIP) || defined(USE_TRANSPONDER)
+#define USE_TIMER_DMA
+#else
+#undef USE_DMA_SPEC
+#endif
+
 #if !defined(USE_DMA_SPEC)
 #undef USE_TIMER_MGMT
 #endif
@@ -311,4 +317,8 @@
 // TODO: Remove this once HAL support is fixed for ESCSERIAL
 #ifdef STM32F7
 #undef USE_ESCSERIAL
+#endif
+
+#ifndef USE_ITERM_RELAX
+#undef USE_ABSOLUTE_CONTROL
 #endif
