@@ -31,13 +31,13 @@
 #define USBD_PRODUCT_STRING     "CrazyBee F3 FR"
 #endif
 
-#undef USE_SERIALRX_CRSF
-#undef USE_SERIALRX_SUMD
-#undef USE_SERIALRX_SUMH
-#undef USE_SERIALRX_XBUS
-#undef USE_TELEMETRY_CRSF
-#undef USE_TELEMETRY_MAVLINK
-#undef USE_PWM
+/* #undef USE_SERIALRX_CRSF */
+/* #undef USE_SERIALRX_SUMD */
+/* #undef USE_SERIALRX_SUMH */
+/* #undef USE_SERIALRX_XBUS */
+/* #undef USE_TELEMETRY_CRSF */
+/* #undef USE_TELEMETRY_MAVLINK */
+/* #undef USE_PWM */
 
 
 #if defined(CRAZYBEEF3FS)
