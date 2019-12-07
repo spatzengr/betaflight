@@ -199,7 +199,7 @@ void delay(uint32_t ms)
         delayMicroseconds(1000);
 }
 
-static void indicate(uint8_t count, uint16_t duration)
+void indicate(uint8_t count, uint16_t duration)
 {
     if (count) {
         LED1_ON;
@@ -251,6 +251,14 @@ void initialiseMemorySections(void)
     extern uint8_t tcm_code_end;
     extern uint8_t tcm_code;
     memcpy(&tcm_code_start, &tcm_code, (size_t) (&tcm_code_end - &tcm_code_start));
+#endif
+
+#ifdef USE_CCM_CODE
+    /* Load functions into RAM */
+    extern uint8_t ccm_code_start;
+    extern uint8_t ccm_code_end;
+    extern uint8_t ccm_code;
+    memcpy(&ccm_code_start, &ccm_code, (size_t) (&ccm_code_end - &ccm_code_start));
 #endif
 
 #ifdef USE_FAST_RAM

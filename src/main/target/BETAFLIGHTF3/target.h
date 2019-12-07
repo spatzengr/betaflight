@@ -24,11 +24,14 @@
 
 #define TARGET_BOARD_IDENTIFIER "BFF3"
 
+#undef USE_DSHOT_TELEMETRY
+
+#define USE_DSHOT_DMAR
 #define USE_BEEPER
 #define BEEPER_PIN              PC15
 #define BEEPER_INVERTED
 
-#define ENABLE_DSHOT_DMAR       true
+#define ENABLE_DSHOT_DMAR       DSHOT_DMAR_ON
 
 #define USABLE_TIMER_CHANNEL_COUNT 10
 

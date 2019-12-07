@@ -28,6 +28,12 @@
 #define USE_VTX_RTC6705
 #endif
 
+#ifdef STM32F3
+#undef USE_ESCSERIAL
+#undef USE_BARO
+#undef USE_RANGEFINDER
+#endif
+
 #ifndef USE_DSHOT
 #undef USE_ESC_SENSOR
 #endif
@@ -161,7 +167,7 @@
 
 // Burst dshot to default off if not configured explicitly by target
 #ifndef ENABLE_DSHOT_DMAR
-#define ENABLE_DSHOT_DMAR false
+#define ENABLE_DSHOT_DMAR DSHOT_DMAR_OFF
 #endif
 
 // Some target doesn't define USE_ADC which USE_ADC_INTERNAL depends on

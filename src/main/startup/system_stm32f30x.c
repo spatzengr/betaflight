@@ -102,6 +102,7 @@
 #include "platform.h"
 
 #include "stm32f30x.h"
+#include "drivers/persistent.h"
 #include "drivers/system.h"
 
 uint32_t hse_value = HSE_VALUE;
@@ -288,6 +289,33 @@ void SystemCoreClockUpdate (void)
   SystemCoreClock >>= tmp;
 }
 
+#ifdef USE_OVERCLOCK
+
+const uint32_t ocPllMul[] = {
+    RCC_CFGR_PLLMULL9,
+    RCC_CFGR_PLLMULL10,
+    RCC_CFGR_PLLMULL11,
+    RCC_CFGR_PLLMULL12,
+    RCC_CFGR_PLLMULL13,
+    RCC_CFGR_PLLMULL14,
+    RCC_CFGR_PLLMULL15,
+    RCC_CFGR_PLLMULL16 };
+
+
+void OverclockRebootIfNecessary(uint32_t level) 
+{
+    uint32_t overClock = level;
+    bool vcp = level >= 8;
+    if (vcp) overClock -= 7;
+    if ((RCC->CFGR & (0xf << 18)) != ocPllMul[overClock]) {
+        persistentObjectWrite(PERSISTENT_OBJECT_OVERCLOCK_LEVEL, level);
+        __disable_irq();
+        NVIC_SystemReset();
+    }
+}
+
+#endif
+
 /**
   * @brief  Configures the System clock source, PLL Multiplier and Divider factors,
   *               AHB/APBx prescalers and Flash settings
@@ -304,6 +332,16 @@ void SetSysClock(void)
 /*            PLL (clocked by HSE) used as System clock source                */
 /******************************************************************************/
 
+  uint32_t overClock = persistentObjectRead(PERSISTENT_OBJECT_OVERCLOCK_LEVEL);
+  bool vcp = overClock > OVERCLOCK_128MHZ;
+  if (vcp) overClock -= OVERCLOCK_128MHZ;
+  
+  // Reset overclock so USB device can be attached at next boot
+  if (vcp) {
+      persistentObjectWrite(PERSISTENT_OBJECT_OVERCLOCK_LEVEL,0);
+  }
+      
+  
   /* SYSCLK, HCLK, PCLK2 and PCLK1 configuration -----------*/
   /* Enable HSE */
   RCC->CR |= ((uint32_t)RCC_CR_HSEON);
@@ -327,7 +365,7 @@ void SetSysClock(void)
   if (HSEStatus == (uint32_t)0x01)
   {
     /* Enable Prefetch Buffer and set Flash Latency */
-    FLASH->ACR = FLASH_ACR_PRFTBE | (uint32_t)FLASH_ACR_LATENCY_1;
+      FLASH->ACR = FLASH_ACR_PRFTBE | (uint32_t)(FLASH_ACR_LATENCY_1);
 
      /* HCLK = SYSCLK / 1 */
      RCC->CFGR |= (uint32_t)RCC_CFGR_HPRE_DIV1;
@@ -345,7 +383,11 @@ void SetSysClock(void)
         RCC->CFGR |= (uint32_t)(RCC_CFGR_PLLSRC_PREDIV1 | RCC_CFGR_PLLXTPRE_PREDIV1 | RCC_CFGR_PLLMULL6);
     }
     else {
+#ifdef USE_OVERCLOCK
+        RCC->CFGR |= (uint32_t)(RCC_CFGR_PLLSRC_PREDIV1 | RCC_CFGR_PLLXTPRE_PREDIV1 | ocPllMul[overClock]);
+#else
         RCC->CFGR |= (uint32_t)(RCC_CFGR_PLLSRC_PREDIV1 | RCC_CFGR_PLLXTPRE_PREDIV1 | RCC_CFGR_PLLMULL9);
+#endif        
     }
 
     /* Enable PLL */
@@ -364,6 +406,10 @@ void SetSysClock(void)
     while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)RCC_CFGR_SWS_PLL)
     {
     }
+
+    RCC->CFGR2 &= (uint32_t)0xFFFFFFF0;
+  
+    SystemCoreClockUpdate();
   }
   else
   { /* If HSE fails to start-up, the application will have wrong clock

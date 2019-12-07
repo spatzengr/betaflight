@@ -350,7 +350,7 @@ serialPort_t *openSerialPort(
 
     switch (identifier) {
 #ifdef USE_VCP
-        case SERIAL_PORT_USB_VCP:
+        case SERIAL_PORT_USB_VCP: 
             serialPort = usbVcpOpen();
             break;
 #endif

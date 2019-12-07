@@ -31,13 +31,13 @@
 #define USBD_PRODUCT_STRING     "CrazyBee F3 FR"
 #endif
 
-#undef USE_SERIALRX_CRSF
-#undef USE_SERIALRX_SUMD
-#undef USE_SERIALRX_SUMH
-#undef USE_SERIALRX_XBUS
-#undef USE_TELEMETRY_CRSF
-#undef USE_TELEMETRY_MAVLINK
-#undef USE_PWM
+/* #undef USE_SERIALRX_CRSF */
+/* #undef USE_SERIALRX_SUMD */
+/* #undef USE_SERIALRX_SUMH */
+/* #undef USE_SERIALRX_XBUS */
+/* #undef USE_TELEMETRY_CRSF */
+/* #undef USE_TELEMETRY_MAVLINK */
+/* #undef USE_PWM */
 
 
 #if defined(CRAZYBEEF3FS)
@@ -54,12 +54,14 @@
 #undef USE_TELEMETRY_FRSKY_HUB
 #undef USE_TELEMETRY_SMARTPORT
 #else
+#define USE_TELEMETRY_SMARTPORT
+#define USE_TELEMETRY_FRSKY_HUB
 #undef USE_SERIALRX_SPEKTRUM
 #undef USE_SERIALRX_IBUS
 #undef USE_TELEMETRY_SRXL
 #endif
 
-#define ENABLE_DSHOT_DMAR       true
+#define ENABLE_DSHOT_DMAR       DSHOT_DMAR_OFF
 
 #define LED0_PIN                PB3
 #define USE_BEEPER 
