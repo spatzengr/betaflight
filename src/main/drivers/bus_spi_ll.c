@@ -85,7 +85,7 @@ static LL_SPI_InitTypeDef defaultInit =
     .CRCCalculation = SPI_CRCCALCULATION_DISABLE,
 };
 
-void spiInitDevice(SPIDevice device)
+void spiInitDevice(SPIDevice device, bool leadingEdge)
 {
     spiDevice_t *spi = &(spiDevice[device]);
 
@@ -94,16 +94,9 @@ void spiInitDevice(SPIDevice device)
     }
 
 #ifndef USE_SPI_TRANSACTION
-#ifdef SDCARD_SPI_INSTANCE
-    if (spi->dev == SDCARD_SPI_INSTANCE) {
-        spi->leadingEdge = true;
-    }
-#endif
-#ifdef RX_SPI_INSTANCE
-    if (spi->dev == RX_SPI_INSTANCE) {
-        spi->leadingEdge = true;
-    }
-#endif
+    spi->leadingEdge = leadingEdge;
+#else
+    UNUSED(leadingEdge);
 #endif
 
     // Enable SPI clock
@@ -254,7 +247,7 @@ void spiSetDivisor(SPI_TypeDef *instance, uint16_t divisor)
 }
 
 #ifdef USE_SPI_TRANSACTION
-void spiBusTransactionInit(busDevice_t *bus, SPIMode_e mode, SPIClockDivider_e divisor)
+void spiBusTransactionInit(busDevice_t *bus, SPIMode_e mode, uint16_t divisor)
 {
     switch (mode) {
     case SPI_MODE0_POL_LOW_EDGE_1ST:

@@ -38,7 +38,7 @@
 
 #include "io/serial.h"
 
-#include "fc/config.h"
+#include "config/config.h"
 
 #include "io/spektrum_rssi.h"
 #include "io/spektrum_vtx_control.h"
@@ -68,7 +68,7 @@ static bool spekHiRes = false;
 
 static volatile uint8_t spekFrame[SPEK_FRAME_SIZE];
 
-static rxRuntimeConfig_t *rxRuntimeConfigPtr;
+static rxRuntimeState_t *rxRuntimeStatePtr;
 static serialPort_t *serialPort;
 
 #if defined(USE_TELEMETRY_SRXL)
@@ -76,18 +76,19 @@ static uint8_t telemetryBuf[SRXL_FRAME_SIZE_MAX];
 static uint8_t telemetryBufLen = 0;
 #endif
 
+static timeUs_t lastRcFrameTimeUs = 0;
+
 // Receive ISR callback
 static void spektrumDataReceive(uint16_t c, void *data)
 {
     UNUSED(data);
 
-    uint32_t spekTime, spekTimeInterval;
-    static uint32_t spekTimeLast = 0;
+    static timeUs_t spekTimeLast = 0;
     static uint8_t spekFramePosition = 0;
 
-    spekTime = micros();
-    spekTimeInterval = spekTime - spekTimeLast;
-    spekTimeLast = spekTime;
+    const timeUs_t now = microsISR();
+    const timeUs_t spekTimeInterval = cmpTimeUs(now, spekTimeLast);
+    spekTimeLast = now;
 
     if (spekTimeInterval > SPEKTRUM_NEEDED_FRAME_INTERVAL) {
         spekFramePosition = 0;
@@ -98,6 +99,7 @@ static void spektrumDataReceive(uint16_t c, void *data)
         if (spekFramePosition < SPEK_FRAME_SIZE) {
             rcFrameComplete = false;
         } else {
+            lastRcFrameTimeUs = now;
             rcFrameComplete = true;
         }
     }
@@ -106,9 +108,9 @@ static void spektrumDataReceive(uint16_t c, void *data)
 
 uint32_t spekChannelData[SPEKTRUM_MAX_SUPPORTED_CHANNEL_COUNT];
 
-static uint8_t spektrumFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
+static uint8_t spektrumFrameStatus(rxRuntimeState_t *rxRuntimeState)
 {
-    UNUSED(rxRuntimeConfig);
+    UNUSED(rxRuntimeState);
 
 #if defined(USE_TELEMETRY_SRXL)
     static timeUs_t telemetryFrameRequestedUs = 0;
@@ -146,7 +148,7 @@ static uint8_t spektrumFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
         // Get the RC control channel inputs
         for (int b = 3; b < spektrumRcDataSize; b += 2) {
             const uint8_t spekChannel = 0x0F & (spekFrame[b - 1] >> spek_chan_shift);
-            if (spekChannel < rxRuntimeConfigPtr->channelCount && spekChannel < SPEKTRUM_MAX_SUPPORTED_CHANNEL_COUNT) {
+            if (spekChannel < rxRuntimeStatePtr->channelCount && spekChannel < SPEKTRUM_MAX_SUPPORTED_CHANNEL_COUNT) {
                 if (rssi_channel == 0 || spekChannel != rssi_channel) {
                     spekChannelData[spekChannel] = ((uint32_t)(spekFrame[b - 1] & spek_chan_mask) << 8) + spekFrame[b];
                 }
@@ -172,11 +174,11 @@ static uint8_t spektrumFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
     return result;
 }
 
-static uint16_t spektrumReadRawRC(const rxRuntimeConfig_t *rxRuntimeConfig, uint8_t chan)
+static uint16_t spektrumReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     uint16_t data;
 
-    if (chan >= rxRuntimeConfig->channelCount) {
+    if (chan >= rxRuntimeState->channelCount) {
         return 0;
     }
 
@@ -242,10 +244,10 @@ void spektrumBind(rxConfig_t *rxConfig)
         ioTag_t rxPin = serialPinConfig()->ioTagRx[index];
 
         // Take care half-duplex case
-        switch (rxRuntimeConfig.serialrxProvider) {
+        switch (rxRuntimeState.serialrxProvider) {
         case SERIALRX_SRXL:
 #if defined(USE_TELEMETRY_SRXL)
-            if (featureIsEnabled(FEATURE_TELEMETRY) && !telemetryCheckRxPortShared(portConfig, rxRuntimeConfig.serialrxProvider)) {
+            if (featureIsEnabled(FEATURE_TELEMETRY) && !telemetryCheckRxPortShared(portConfig, rxRuntimeState.serialrxProvider)) {
                 bindPin = txPin;
             }
             break;
@@ -311,9 +313,9 @@ void spektrumBind(rxConfig_t *rxConfig)
 #endif // USE_SPEKTRUM_BIND
 
 #if defined(USE_TELEMETRY_SRXL)
-static bool spektrumProcessFrame(const rxRuntimeConfig_t *rxRuntimeConfig)
+static bool spektrumProcessFrame(const rxRuntimeState_t *rxRuntimeState)
 {
-    UNUSED(rxRuntimeConfig);
+    UNUSED(rxRuntimeState);
 
     // if there is telemetry data to write
     if (telemetryBufLen > 0) {
@@ -341,9 +343,14 @@ void srxlRxWriteTelemetryData(const void *data, int len)
 }
 #endif
 
-bool spektrumInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
+static timeUs_t spektrumFrameTimeUsFn(void)
 {
-    rxRuntimeConfigPtr = rxRuntimeConfig;
+    return lastRcFrameTimeUs;
+}
+
+bool spektrumInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
+{
+    rxRuntimeStatePtr = rxRuntimeState;
 
     const serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_RX_SERIAL);
     if (!portConfig) {
@@ -352,12 +359,12 @@ bool spektrumInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig
 
     srxlEnabled = false;
 #if defined(USE_TELEMETRY_SRXL)
-    bool portShared = telemetryCheckRxPortShared(portConfig, rxRuntimeConfig->serialrxProvider);
+    bool portShared = telemetryCheckRxPortShared(portConfig, rxRuntimeState->serialrxProvider);
 #else
     bool portShared = false;
 #endif
 
-    switch (rxRuntimeConfig->serialrxProvider) {
+    switch (rxRuntimeState->serialrxProvider) {
     default:
 
         break;
@@ -372,8 +379,8 @@ bool spektrumInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig
         spek_chan_mask = 0x07;
         spekHiRes = true;
         resolution = 2048;
-        rxRuntimeConfig->channelCount = SPEKTRUM_2048_CHANNEL_COUNT;
-        rxRuntimeConfig->rxRefreshRate = 11000;
+        rxRuntimeState->channelCount = SPEKTRUM_2048_CHANNEL_COUNT;
+        rxRuntimeState->rxRefreshRate = 11000;
         break;
     case SERIALRX_SPEKTRUM1024:
         // 10 bit frames
@@ -381,15 +388,16 @@ bool spektrumInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig
         spek_chan_mask = 0x03;
         spekHiRes = false;
         resolution = 1024;
-        rxRuntimeConfig->channelCount = SPEKTRUM_1024_CHANNEL_COUNT;
-        rxRuntimeConfig->rxRefreshRate = 22000;
+        rxRuntimeState->channelCount = SPEKTRUM_1024_CHANNEL_COUNT;
+        rxRuntimeState->rxRefreshRate = 22000;
         break;
     }
 
-    rxRuntimeConfig->rcReadRawFn = spektrumReadRawRC;
-    rxRuntimeConfig->rcFrameStatusFn = spektrumFrameStatus;
+    rxRuntimeState->rcReadRawFn = spektrumReadRawRC;
+    rxRuntimeState->rcFrameStatusFn = spektrumFrameStatus;
+    rxRuntimeState->rcFrameTimeUsFn = spektrumFrameTimeUsFn;
 #if defined(USE_TELEMETRY_SRXL)
-    rxRuntimeConfig->rcProcessFrameFn = spektrumProcessFrame;
+    rxRuntimeState->rcProcessFrameFn = spektrumProcessFrame;
 #endif
 
     serialPort = openSerialPort(portConfig->identifier,
@@ -409,7 +417,7 @@ bool spektrumInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig
 #endif
 
     rssi_channel = rxConfig->rssi_channel - 1; // -1 because rxConfig->rssi_channel is 1-based and rssi_channel is 0-based.
-    if (rssi_channel >= rxRuntimeConfig->channelCount) {
+    if (rssi_channel >= rxRuntimeState->channelCount) {
         rssi_channel = 0;
     }
 

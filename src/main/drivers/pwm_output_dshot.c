@@ -120,7 +120,12 @@ FAST_CODE void pwmDshotSetDirectionOutput(
 
 
 #ifdef USE_DSHOT_TELEMETRY
-FAST_CODE static void pwmDshotSetDirectionInput(
+#if defined(STM32F3)
+CCM_CODE
+#else
+FAST_CODE
+#endif
+static void pwmDshotSetDirectionInput(
     motorDmaOutput_t * const motor
 )
 {
@@ -183,6 +188,11 @@ void pwmCompleteDshotMotorUpdate(void)
     }
 }
 
+#if defined(STM32F3)
+CCM_CODE
+#else
+FAST_CODE
+#endif
 static void motor_DMA_IRQHandler(dmaChannelDescriptor_t *descriptor)
 {
     if (DMA_GET_FLAG_STATUS(descriptor, DMA_IT_TCIF)) {
@@ -214,7 +224,7 @@ static void motor_DMA_IRQHandler(dmaChannelDescriptor_t *descriptor)
     }
 }
 
-bool pwmDshotMotorHardwareConfig(const timerHardware_t *timerHardware, uint8_t motorIndex, motorPwmProtocolTypes_e pwmProtocolType, uint8_t output)
+bool pwmDshotMotorHardwareConfig(const timerHardware_t *timerHardware, uint8_t motorIndex, uint8_t reorderedMotorIndex, motorPwmProtocolTypes_e pwmProtocolType, uint8_t output)
 {
 #ifdef USE_DSHOT_TELEMETRY
 #define OCINIT motor->ocInitStruct
@@ -367,7 +377,7 @@ bool pwmDshotMotorHardwareConfig(const timerHardware_t *timerHardware, uint8_t m
     } else
 #endif
     {
-        dmaInit(dmaGetIdentifier(dmaRef), OWNER_MOTOR, RESOURCE_INDEX(motorIndex));
+        dmaInit(dmaGetIdentifier(dmaRef), OWNER_MOTOR, RESOURCE_INDEX(reorderedMotorIndex));
 
         motor->dmaBuffer = &dshotDmaBuffer[motorIndex][0];
 

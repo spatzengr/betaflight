@@ -760,7 +760,7 @@ static serialPort_t *openEscSerial(const motorDevConfig_t *motorConfig, escSeria
         setTxSignalEsc(escSerial, ENABLE);
         serialTimerTxConfigBL(escSerial->txTimerHardware, portIndex, baud);
     }
-    else if (mode == PROTOCOL_CASTLE){
+    else if (mode == PROTOCOL_CASTLE) {
         escSerialOutputPortConfig(escSerial->rxTimerHardware);
         serialTimerTxConfigBL(escSerial->txTimerHardware, portIndex, baud);
         serialTimerRxConfigBL(escSerial->rxTimerHardware, portIndex, options);
@@ -947,7 +947,7 @@ bool escEnablePassthrough(serialPort_t *escPassthroughPort, const motorDevConfig
     LED0_OFF;
     LED1_OFF;
     //StopPwmAllMotors();
-    // XXX Review effect of motor refactor 
+    // XXX Review effect of motor refactor
     //pwmDisableMotors();
     motorDisable();
     passPort = escPassthroughPort;

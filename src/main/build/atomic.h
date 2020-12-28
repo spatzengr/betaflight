@@ -137,13 +137,6 @@ static inline uint8_t __basepriSetRetVal(uint8_t prio)
 // On gcc 5 and higher, this protects only memory passed as parameter (any type can be used)
 // this macro can be used only ONCE PER LINE, but multiple uses per block are fine
 
-#if (__GNUC__ > 7)
-# warning "Please verify that ATOMIC_BARRIER works as intended"
-// increment version number if BARRIER works
-// TODO - use flag to disable ATOMIC_BARRIER and use full barrier instead
-// you should check that local variable scope with cleanup spans entire block
-#endif
-
 #ifndef __UNIQL
 # define __UNIQL_CONCAT2(x,y) x ## y
 # define __UNIQL_CONCAT(x,y) __UNIQL_CONCAT2(x,y)
@@ -165,7 +158,7 @@ static inline void __do_cleanup(__cleanup_block * b) { (*b)(); }
 #define ATOMIC_BARRIER(data)                                            \
     typeof(data) *__UNIQL(__barrier) = &data;                           \
     ATOMIC_BARRIER_ENTER(__UNIQL(__barrier), #data);                    \
-    __cleanup_block __attribute__((cleanup(__do_cleanup) __unused__)) __UNIQL(__cleanup) = \
+    __cleanup_block __attribute__((cleanup(__do_cleanup), __unused__)) __UNIQL(__cleanup) = \
         ^{  ATOMIC_BARRIER_LEAVE(__UNIQL(__barrier), #data); };         \
     do {} while(0)                                                      \
 /**/

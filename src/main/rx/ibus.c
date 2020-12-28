@@ -75,7 +75,8 @@ static bool ibusFrameDone = false;
 static uint32_t ibusChannelData[IBUS_MAX_CHANNEL];
 
 static uint8_t ibus[IBUS_BUFFSIZE] = { 0, };
-
+static timeUs_t lastFrameTimeUs = 0;
+static timeUs_t lastRcFrameTimeUs = 0;
 
 static bool isValidIa6bIbusPacketLength(uint8_t length)
 {
@@ -88,13 +89,12 @@ static void ibusDataReceive(uint16_t c, void *data)
 {
     UNUSED(data);
 
-    uint32_t ibusTime;
-    static uint32_t ibusTimeLast;
+    static timeUs_t ibusTimeLast;
     static uint8_t ibusFramePosition;
 
-    ibusTime = micros();
+    const timeUs_t now = microsISR();
 
-    if ((ibusTime - ibusTimeLast) > IBUS_FRAME_GAP) {
+    if (cmpTimeUs(now, ibusTimeLast) > IBUS_FRAME_GAP) {
         ibusFramePosition = 0;
         rxBytesToIgnore = 0;
     } else if (rxBytesToIgnore) {
@@ -102,7 +102,7 @@ static void ibusDataReceive(uint16_t c, void *data)
         return;
     }
 
-    ibusTimeLast = ibusTime;
+    ibusTimeLast = now;
 
     if (ibusFramePosition == 0) {
         if (isValidIa6bIbusPacketLength(c)) {
@@ -125,6 +125,7 @@ static void ibusDataReceive(uint16_t c, void *data)
     ibus[ibusFramePosition] = (uint8_t)c;
 
     if (ibusFramePosition == ibusFrameSize - 1) {
+        lastFrameTimeUs = now;
         ibusFrameDone = true;
     } else {
         ibusFramePosition++;
@@ -167,9 +168,9 @@ static void updateChannelData(void) {
     }
 }
 
-static uint8_t ibusFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
+static uint8_t ibusFrameStatus(rxRuntimeState_t *rxRuntimeState)
 {
-    UNUSED(rxRuntimeConfig);
+    UNUSED(rxRuntimeState);
 
     uint8_t frameStatus = RX_FRAME_PENDING;
 
@@ -183,10 +184,9 @@ static uint8_t ibusFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
         if (ibusModel == IBUS_MODEL_IA6 || ibusSyncByte == IBUS_SERIAL_RX_PACKET_LENGTH) {
             updateChannelData();
             frameStatus = RX_FRAME_COMPLETE;
-        }
-        else
-        {
+            lastRcFrameTimeUs = lastFrameTimeUs;
 #if defined(USE_TELEMETRY) && defined(USE_TELEMETRY_IBUS)
+        } else {
             rxBytesToIgnore = respondToIbusRequest(ibus);
 #endif
         }
@@ -196,23 +196,28 @@ static uint8_t ibusFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
 }
 
 
-static uint16_t ibusReadRawRC(const rxRuntimeConfig_t *rxRuntimeConfig, uint8_t chan)
+static uint16_t ibusReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
-    UNUSED(rxRuntimeConfig);
+    UNUSED(rxRuntimeState);
     return ibusChannelData[chan];
 }
 
+static timeUs_t ibusFrameTimeUsFn(void)
+{
+    return lastRcFrameTimeUs;
+}
 
-bool ibusInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
+bool ibusInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 {
     UNUSED(rxConfig);
     ibusSyncByte = 0;
 
-    rxRuntimeConfig->channelCount = IBUS_MAX_CHANNEL;
-    rxRuntimeConfig->rxRefreshRate = 20000; // TODO - Verify speed
+    rxRuntimeState->channelCount = IBUS_MAX_CHANNEL;
+    rxRuntimeState->rxRefreshRate = 20000; // TODO - Verify speed
 
-    rxRuntimeConfig->rcReadRawFn = ibusReadRawRC;
-    rxRuntimeConfig->rcFrameStatusFn = ibusFrameStatus;
+    rxRuntimeState->rcReadRawFn = ibusReadRawRC;
+    rxRuntimeState->rcFrameStatusFn = ibusFrameStatus;
+    rxRuntimeState->rcFrameTimeUsFn = ibusFrameTimeUsFn;
 
     const serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_RX_SERIAL);
     if (!portConfig) {

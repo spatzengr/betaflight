@@ -67,18 +67,20 @@ static int displayPortTestScreenSize(const displayPort_t *displayPort)
     return 0;
 }
 
-static int displayPortTestWriteString(displayPort_t *displayPort, uint8_t x, uint8_t y, const char *s)
+static int displayPortTestWriteString(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t attr, const char *s)
 {
     UNUSED(displayPort);
+    UNUSED(attr);
     for (unsigned int i = 0; i < strlen(s); i++) {
         testDisplayPortBuffer[(y * UNITTEST_DISPLAYPORT_COLS) + x + i] = s[i];
     }
     return 0;
 }
 
-static int displayPortTestWriteChar(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t c)
+static int displayPortTestWriteChar(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t attr, uint8_t c)
 {
     UNUSED(displayPort);
+    UNUSED(attr);
     testDisplayPortBuffer[(y * UNITTEST_DISPLAYPORT_COLS) + x] = c;
     return 0;
 }
@@ -95,7 +97,7 @@ static int displayPortTestHeartbeat(displayPort_t *displayPort)
     return 0;
 }
 
-static void displayPortTestResync(displayPort_t *displayPort)
+static void displayPortTestRedraw(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
 }
@@ -116,7 +118,7 @@ static const displayPortVTable_t testDisplayPortVTable = {
     .writeChar = displayPortTestWriteChar,
     .isTransferInProgress = displayPortTestIsTransferInProgress,
     .heartbeat = displayPortTestHeartbeat,
-    .resync = displayPortTestResync,
+    .redraw = displayPortTestRedraw,
     .txBytesFree = displayPortTestTxBytesFree
 };
 

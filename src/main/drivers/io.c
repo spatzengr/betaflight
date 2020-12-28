@@ -90,7 +90,18 @@ const struct ioPortDef_s ioPortDefs[] = {
     { RCC_AHB4(GPIOF) },
     { RCC_AHB4(GPIOG) },
     { RCC_AHB4(GPIOH) },
+#if !(defined(STM32H723xx) || defined(STM32H725xx))
     { RCC_AHB4(GPIOI) },
+#endif
+};
+#elif defined(STM32G4)
+const struct ioPortDef_s ioPortDefs[] = {
+    { RCC_AHB2(GPIOA) },
+    { RCC_AHB2(GPIOB) },
+    { RCC_AHB2(GPIOC) },
+    { RCC_AHB2(GPIOD) },
+    { RCC_AHB2(GPIOE) },
+    { RCC_AHB2(GPIOF) },
 };
 #endif
 
@@ -155,7 +166,7 @@ uint32_t IO_EXTI_Line(IO_t io)
     if (!io) {
         return 0;
     }
-#if defined(STM32F1) || defined(STM32F4) || defined(STM32F7) || defined(STM32H7)
+#if defined(STM32F1) || defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(STM32G4)
     return 1 << IO_GPIOPinIdx(io);
 #elif defined(STM32F3)
     return IO_GPIOPinIdx(io);
@@ -323,7 +334,7 @@ void IOConfigGPIO(IO_t io, ioConfig_t cfg)
     GPIO_Init(IO_GPIO(io), &init);
 }
 
-#elif defined(STM32H7)
+#elif defined(STM32H7) || defined(STM32G4)
 
 void IOConfigGPIO(IO_t io, ioConfig_t cfg)
 {
@@ -471,3 +482,9 @@ IO_t IOGetByTag(ioTag_t tag)
     return ioRecs + offset;
 }
 
+void IOTraversePins(IOTraverseFuncPtr_t fnPtr)
+{
+    for (int i = 0; i < DEFIO_IO_USED_COUNT; i++) {
+        fnPtr(&ioRecs[i]);
+    }
+}

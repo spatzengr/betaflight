@@ -328,6 +328,11 @@ extern "C" {
 #define ADC_AWD_TR3_REGOFFSET              (ADC_AWD_CR3_REGOFFSET)
 #define ADC_AWD_TRX_REGOFFSET_MASK         (ADC_AWD_TR1_REGOFFSET | ADC_AWD_TR2_REGOFFSET | ADC_AWD_TR3_REGOFFSET)
 #define ADC_AWD_TRX_REGOFFSET_POS          (ADC_AWD_CRX_REGOFFSET_POS)     /* Position of bits ADC_TRx_REGOFFSET in ADC_AWD_TRX_REGOFFSET_MASK */
+#if defined(ADC_VER_V5_V90)
+#define ADC_AWD_TRX_BIT_HIGH_MASK          (0x00010000UL)                   /* Selection of 1 bit to discriminate threshold high: mask of bit */
+#define ADC_AWD_TRX_BIT_HIGH_POS           (16UL)                           /* Selection of 1 bit to discriminate threshold high: position of bit */
+#define ADC_AWD_TRX_BIT_HIGH_SHIFT4        (ADC_AWD_TRX_BIT_HIGH_POS - 4UL) /* Shift of bit ADC_AWD_TRX_BIT_HIGH to position to perform a shift of 4 ranks */
+#endif  /* ADC_VER_V5_V90 */
 
 /* Register offset gap between AWD1 and AWD2-AWD3 thresholds registers */
 /* (Set separately as ADC_AWD_TRX_REGOFFSET to spare 32 bits space */
@@ -353,6 +358,9 @@ extern "C" {
 #define ADC_CFGR_AWD1SGL_BITOFFSET_POS     (ADC_CFGR_AWD1SGL_Pos)
 #define ADC_CFGR_AWD1EN_BITOFFSET_POS      (ADC_CFGR_AWD1EN_Pos)
 #define ADC_CFGR_JAWD1EN_BITOFFSET_POS     (ADC_CFGR_JAWD1EN_Pos)
+#if defined(ADC_VER_V5_V90)
+#define ADC_CFGR_RES_BITOFFSET_POS_ADC3    (ADC3_CFGR_RES_Pos)
+#endif /* ADC_VER_V5_V90 */
 
 
 /* ADC registers bits groups */
@@ -361,16 +369,35 @@ extern "C" {
 
 /* ADC internal channels related definitions */
 /* Internal voltage reference VrefInt */
+#if defined(ADC_VER_V5_3)
+#define VREFINT_CAL_ADDR                   ((uint16_t*) (0x8fff810UL))  /* Internal voltage reference, address of parameter VREFINT_CAL: VrefInt ADC raw data acquired at temperature 30 DegC (tolerance: +-5 DegC), Vref+ = 3.3 V (tolerance: +-10 mV). */
+                                                                        /* Adress related to STM32H7A3 */
+#else /* ADC_VER_V5_90 || ADC_VER_V5_X */
 #define VREFINT_CAL_ADDR                   ((uint16_t*) (0x1FF1E860UL)) /* Internal voltage reference, address of parameter VREFINT_CAL: VrefInt ADC raw data acquired at temperature 30 DegC (tolerance: +-5 DegC), Vref+ = 3.3 V (tolerance: +-10 mV). */
+#endif /* ADC_VER_V5_3 */
 #define VREFINT_CAL_VREF                   (3300UL)                     /* Analog voltage reference (Vref+) value with which temperature sensor has been calibrated in production (tolerance: +-10 mV) (unit: mV). */
 /* Temperature sensor */
+#if defined(ADC_VER_V5_3)
+#define TEMPSENSOR_CAL1_ADDR               ((uint16_t*) (0x8fff814UL))  /* Internal temperature sensor, address of parameter TS_CAL1: On STM32H7, temperature sensor ADC raw data acquired at temperature  30 DegC (tolerance: +-5 DegC), Vref+ = 3.3 V (tolerance: +-10 mV). */
+#define TEMPSENSOR_CAL2_ADDR               ((uint16_t*) (0x8fff818UL))  /* Internal temperature sensor, address of parameter TS_CAL2: On STM32H7, temperature sensor ADC raw data acquired at temperature 110 DegC (tolerance: +-5 DegC), Vref+ = 3.3 V (tolerance: +-10 mV). */
+                                                                        /* Adresses related to STM32H7A3 */
+#else /* ADC_VER_V5_90 || ADC_VER_V5_X */
 #define TEMPSENSOR_CAL1_ADDR               ((uint16_t*) (0x1FF1E820UL)) /* Internal temperature sensor, address of parameter TS_CAL1: On STM32H7, temperature sensor ADC raw data acquired at temperature  30 DegC (tolerance: +-5 DegC), Vref+ = 3.3 V (tolerance: +-10 mV). */
 #define TEMPSENSOR_CAL2_ADDR               ((uint16_t*) (0x1FF1E840UL)) /* Internal temperature sensor, address of parameter TS_CAL2: On STM32H7, temperature sensor ADC raw data acquired at temperature 110 DegC (tolerance: +-5 DegC), Vref+ = 3.3 V (tolerance: +-10 mV). */
+#endif /* ADC_VER_V5_3 */
+
 #define TEMPSENSOR_CAL1_TEMP               (30L)                        /* Internal temperature sensor, temperature at which temperature sensor has been calibrated in production for data into TEMPSENSOR_CAL1_ADDR (tolerance: +-5 DegC) (unit: DegC). */
 #define TEMPSENSOR_CAL2_TEMP               (110L)                       /* Internal temperature sensor, temperature at which temperature sensor has been calibrated in production for data into TEMPSENSOR_CAL2_ADDR (tolerance: +-5 DegC) (unit: DegC). */
 #define TEMPSENSOR_CAL_VREFANALOG          (3300UL)                     /* Analog voltage reference (Vref+) voltage with which temperature sensor has been calibrated in production (+-10 mV) (unit: mV). */
 
-
+/* Registers addresses with ADC linearity calibration content (programmed during device production, specific to each device) */
+#define ADC_LINEAR_CALIB_REG_1_ADDR ((uint32_t*) (0x1FF1EC00UL))
+#define ADC_LINEAR_CALIB_REG_2_ADDR ((uint32_t*) (0x1FF1EC04UL))
+#define ADC_LINEAR_CALIB_REG_3_ADDR ((uint32_t*) (0x1FF1EC08UL))
+#define ADC_LINEAR_CALIB_REG_4_ADDR ((uint32_t*) (0x1FF1EC0CUL))
+#define ADC_LINEAR_CALIB_REG_5_ADDR ((uint32_t*) (0x1FF1EC10UL))
+#define ADC_LINEAR_CALIB_REG_6_ADDR ((uint32_t*) (0x1FF1EC14UL))
+#define ADC_LINEAR_CALIB_REG_COUNT  (6UL)
 /**
   * @}
   */
@@ -744,14 +771,42 @@ typedef struct
 /** @defgroup ADC_LL_EC_RESOLUTION  ADC instance - Resolution
   * @{
   */
-#define LL_ADC_RESOLUTION_16B              (0x00000000UL)                                   /*!< ADC resolution 16 bits */
-#define LL_ADC_RESOLUTION_14B              (                                ADC_CFGR_RES_0) /*!< ADC resolution 12 bits */
-#define LL_ADC_RESOLUTION_12B              (               ADC_CFGR_RES_1                 ) /*!< ADC resolution 12 bits */
-#define LL_ADC_RESOLUTION_10B              (               ADC_CFGR_RES_1 | ADC_CFGR_RES_0) /*!< ADC resolution 10 bits */
+#define LL_ADC_RESOLUTION_16B              (0x00000000UL)                                      /*!< ADC resolution 16 bits */
+#define LL_ADC_RESOLUTION_14B              (                                  ADC_CFGR_RES_0)  /*!< ADC resolution 12 bits */
+#define LL_ADC_RESOLUTION_12B              (                 ADC_CFGR_RES_1                 )  /*!< ADC resolution 12 bits */
+#define LL_ADC_RESOLUTION_10B              (                 ADC_CFGR_RES_1 | ADC_CFGR_RES_0)  /*!< ADC resolution 10 bits */
+
+#if defined (ADC_VER_V5_X)
+#define LL_ADC_RESOLUTION_14B_OPT          (ADC_CFGR_RES_2 |                  ADC_CFGR_RES_0)  /*!< ADC resolution 14 bits optimized for power consumption, available on for devices revision V only */
+#define LL_ADC_RESOLUTION_12B_OPT          (ADC_CFGR_RES_2 | ADC_CFGR_RES_1                 )  /*!< ADC resolution 12 bits optimized for power consumption, available on for devices revision V only */
+#endif
+
+#if defined (ADC_VER_V5_3) || defined(ADC_VER_V5_V90)
+#define LL_ADC_RESOLUTION_8B               (ADC_CFGR_RES_2|ADC_CFGR_RES_1 | ADC_CFGR_RES_0) /*!< ADC resolution  8 bits */
+#else
 #define LL_ADC_RESOLUTION_8B               (ADC_CFGR_RES_2                                ) /*!< ADC resolution  8 bits */
+                                                                                            /*!< The resolution setting is managed internaly in the driver:
+                                                                                                    "LL_ADC_RESOLUTION_8B" definition: keep using the "100b" value (corresponding to STM32H74x/5x rev Y).
+                                                                                                    Rev.V value "111b" is handled through functions "LL_ADC_SetResolution/LL_ADC_GetResolution"  with a dedicated check on DBGMCU IDCODE register */
+#endif
+#if defined(ADC_VER_V5_V90)
+#define LL_ADC_RESOLUTION_6B               (ADC3_CFGR_RES_1 | ADC3_CFGR_RES_0)   /*!< ADC resolution  6 bits. Value available for ADC3 on STM32H72xx/3xx devices only*/
+#endif  /* ADC_VER_V5_V90 */
 /**
   * @}
   */
+
+#if defined(ADC_VER_V5_V90)
+/** @defgroup ADC_LL_EC_DATA_ALIGN  ADC instance - Data alignment
+  * @{
+  */
+#define LL_ADC_DATA_ALIGN_RIGHT            (0x00000000UL)         /*!< ADC conversion data alignment: right aligned (alignment on data register LSB bit 0)*/
+#define LL_ADC_DATA_ALIGN_LEFT             (ADC3_CFGR_ALIGN)       /*!< ADC conversion data alignment: left aligned (aligment on data register MSB bit 15)*/
+/**
+  * @}
+  */
+
+#endif  /* ADC_VER_V5_V90 */
 
 /** @defgroup ADC_LL_EC_LEFT_BIT_SHIFT   ADC left Shift
   * @{
@@ -813,6 +868,37 @@ typedef struct
 /**
   * @}
   */
+#if defined(ADC_VER_V5_V90)
+/** @defgroup ADC_LL_EC_OFFSET_SATURATION ADC instance - Offset saturation mode
+  * @{
+  */
+#define LL_ADC_OFFSET_SATURATION_DISABLE   (0x00000000UL)           /*!< ADC offset saturation is disabled (among ADC selected offset number 1, 2, 3 or 4). On devices STM32H72xx and STM32H73xx */
+#define LL_ADC_OFFSET_SATURATION_ENABLE    (ADC3_OFR1_SATEN)        /*!< ADC offset saturation is enabled (among ADC selected offset number 1, 2, 3 or 4). On devices STM32H72xx and STM32H73xx */
+/**
+  * @}
+  */
+
+/** @defgroup ADC_LL_EC_OFFSET_STATE ADC instance - Offset state
+  * @{
+  */
+#define LL_ADC_OFFSET_DISABLE              (0x00000000UL)         /*!< ADC offset disabled (among ADC selected offset number 1, 2, 3 or 4) */
+#define LL_ADC_OFFSET_ENABLE               (ADC3_OFR1_OFFSET1_EN)  /*!< ADC offset enabled (among ADC selected offset number 1, 2, 3 or 4) */
+/**
+  * @}
+  */
+#if defined(ADC_VER_V5_V90)
+/** @defgroup ADC_LL_EC_OFFSET_SIGN ADC instance - Offset sign
+  * @{
+  */
+#define LL_ADC_OFFSET_SIGN_NEGATIVE        (0x00000000UL)        /*!< ADC offset is negative (among ADC selected offset number 1, 2, 3 or 4). On devices STM32H72xx and STM32H73xx */
+#define LL_ADC_OFFSET_SIGN_POSITIVE        (ADC3_OFR1_OFFSETPOS) /*!< ADC offset is positive (among ADC selected offset number 1, 2, 3 or 4). On devices STM32H72xx and STM32H73xx */
+/**
+  * @}
+  */
+#endif
+
+#endif /* ADC_VER_V5_V90 */
+
 /** @defgroup ADC_LL_EC_GROUPS  ADC instance - Groups
   * @{
   */
@@ -846,12 +932,28 @@ typedef struct
 #define LL_ADC_CHANNEL_17                  (ADC_CHANNEL_17_NUMBER | ADC_CHANNEL_17_SMP | ADC_CHANNEL_17_BITFIELD) /*!< ADC external channel (channel connected to GPIO pin) ADCx_IN17 */
 #define LL_ADC_CHANNEL_18                  (ADC_CHANNEL_18_NUMBER | ADC_CHANNEL_18_SMP | ADC_CHANNEL_18_BITFIELD) /*!< ADC external channel (channel connected to GPIO pin) ADCx_IN18 */
 #define LL_ADC_CHANNEL_19                  (ADC_CHANNEL_19_NUMBER | ADC_CHANNEL_19_SMP | ADC_CHANNEL_19_BITFIELD) /*!< ADC external channel (channel connected to GPIO pin) ADCx_IN19 */
-/*!< ADC3 is defined only in the case of STM32H7XX */
+#if defined(ADC3)
+#if defined(ADC_VER_V5_V90)
+#define LL_ADC_CHANNEL_VREFINT             (LL_ADC_CHANNEL_18 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to VrefInt: Internal voltage reference. On STM32H7, ADC channel available only on ADC instance: ADC3. */
+#define LL_ADC_CHANNEL_TEMPSENSOR          (LL_ADC_CHANNEL_17 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to Temperature sensor. On STM32H7, ADC channel available only on ADC instance: ADC3. */
+#define LL_ADC_CHANNEL_VBAT                (LL_ADC_CHANNEL_16 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to Vbat/3: Vbat voltage through a divider ladder of factor 1/4 to have Vbat always below Vdda. On STM32H7, ADC channel available only on ADC instance: ADC3. */
+#else
 #define LL_ADC_CHANNEL_VREFINT             (LL_ADC_CHANNEL_19 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to VrefInt: Internal voltage reference. On STM32H7, ADC channel available only on ADC instance: ADC3. */
 #define LL_ADC_CHANNEL_TEMPSENSOR          (LL_ADC_CHANNEL_18 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to Temperature sensor. On STM32H7, ADC channel available only on ADC instance: ADC3. */
 #define LL_ADC_CHANNEL_VBAT                (LL_ADC_CHANNEL_17 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to Vbat/3: Vbat voltage through a divider ladder of factor 1/4 to have Vbat always below Vdda. On STM32H7, ADC channel available only on ADC instance: ADC3. */
+#endif
+#else
+/*!< Specific define for STM32H7A3xx and STM32HB3xx varieties of STM32H7XXX */
+#define LL_ADC_CHANNEL_VREFINT             (LL_ADC_CHANNEL_19 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to VrefInt: Internal voltage reference. On STM32H7, ADC channel available only on ADC instance: ADC2. */
+#define LL_ADC_CHANNEL_TEMPSENSOR          (LL_ADC_CHANNEL_18 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to Temperature sensor. On STM32H7, ADC channel available only on ADC instance: ADC2. */
+#define LL_ADC_CHANNEL_VBAT                (LL_ADC_CHANNEL_14 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to Vbat/3: Vbat voltage through a divider ladder of factor 1/4 to have Vbat always below Vdda. On STM32H7, ADC channel available only on ADC instance: ADC2. */
+#endif
 #define LL_ADC_CHANNEL_DAC1CH1_ADC2        (LL_ADC_CHANNEL_16 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to DAC1 channel 1, channel specific to ADC2 */
 #define LL_ADC_CHANNEL_DAC1CH2_ADC2        (LL_ADC_CHANNEL_17 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to DAC1 channel 2, channel specific to ADC2 */
+#if defined(DAC2)
+/*!< Specific define for STM32H7A3xx and STM32HB3xx varieties of STM32H7XXX */
+#define LL_ADC_CHANNEL_DAC2CH1_ADC2        (LL_ADC_CHANNEL_15 | ADC_CHANNEL_ID_INTERNAL_CH) /*!< ADC internal channel connected to DAC2 channel 1, channel specific to ADC2 */
+#endif
 /**
   * @}
   */
@@ -879,8 +981,14 @@ typedef struct
 #define LL_ADC_REG_TRIG_EXT_HRTIM_TRG1    (ADC_CFGR_EXTSEL_4 | ADC_REG_TRIG_EXT_EDGE_DEFAULT)                                                               /*!< ADC group regular conversion trigger from external peripheral: HRTIM TRG1 event. Trigger edge set to rising edge (default setting). */
 #define LL_ADC_REG_TRIG_EXT_HRTIM_TRG3    (ADC_CFGR_EXTSEL_4 | ADC_CFGR_EXTSEL_0 | ADC_REG_TRIG_EXT_EDGE_DEFAULT)                                           /*!< ADC group regular conversion trigger from external peripheral: HRTIM TRG2 event. Trigger edge set to rising edge (default setting). */
 #define LL_ADC_REG_TRIG_EXT_LPTIM1_OUT    (ADC_CFGR_EXTSEL_4 | ADC_CFGR_EXTSEL_1 | ADC_REG_TRIG_EXT_EDGE_DEFAULT)                                           /*!< ADC group regular conversion trigger from external peripheral: LPTIM1 OUT event. Trigger edge set to rising edge (default setting). */
-#define LL_ADC_REG_TRIG_EXT_LPTIM2_OUT    (ADC_CFGR_EXTSEL_4 | ADC_CFGR_EXTSEL_1| ADC_CFGR_EXTSEL_0 | ADC_REG_TRIG_EXT_EDGE_DEFAULT)                        /*!< ADC group regular conversion trigger from external peripheral: LPTIM2 OUT event. Trigger edge set to rising edge (default setting). */
+#define LL_ADC_REG_TRIG_EXT_LPTIM2_OUT    (ADC_CFGR_EXTSEL_4 | ADC_CFGR_EXTSEL_1 | ADC_CFGR_EXTSEL_0 | ADC_REG_TRIG_EXT_EDGE_DEFAULT)                       /*!< ADC group regular conversion trigger from external peripheral: LPTIM2 OUT event. Trigger edge set to rising edge (default setting). */
 #define LL_ADC_REG_TRIG_EXT_LPTIM3_OUT    (ADC_CFGR_EXTSEL_4 | ADC_CFGR_EXTSEL_2 | ADC_REG_TRIG_EXT_EDGE_DEFAULT)                                           /*!< ADC group regular conversion trigger from external peripheral: LPTIM3 event OUT. Trigger edge set to rising edge (default setting). */
+#if defined (TIM23)
+#define LL_ADC_REG_TRIG_EXT_TIM23_TRGO    (ADC_CFGR_EXTSEL_4 | ADC_CFGR_EXTSEL_2 | ADC_CFGR_EXTSEL_0 | ADC_REG_TRIG_EXT_EDGE_DEFAULT)                       /*!< ADC group regular conversion trigger from external peripheral: TIM23 TRGO event. Trigger edge set to rising edge (default setting). */
+#endif /* TIM23 */
+#if defined (TIM24)
+#define LL_ADC_REG_TRIG_EXT_TIM24_TRGO    (ADC_CFGR_EXTSEL_4 | ADC_CFGR_EXTSEL_2 | ADC_CFGR_EXTSEL_1 | ADC_REG_TRIG_EXT_EDGE_DEFAULT)                       /*!< ADC group regular conversion trigger from external peripheral: TIM24 TRGO event. Trigger edge set to rising edge (default setting). */
+#endif /* TIM24 */
 /**
   * @}
   */
@@ -894,6 +1002,20 @@ typedef struct
 /**
   * @}
   */
+#if defined(ADC_VER_V5_V90)
+ /** @defgroup ADC_LL_EC_REG_SAMPLING_MODE  ADC group regular - Sampling mode
+  * @{
+  */
+#define LL_ADC_REG_SAMPLING_MODE_NORMAL               (0x00000000UL)        /*!< ADC conversions sampling phase duration is defined using  @ref ADC_LL_EC_CHANNEL_SAMPLINGTIME. On devices STM32H72xx and STM32H73xx */
+#define LL_ADC_REG_SAMPLING_MODE_BULB                 (ADC3_CFGR2_BULB)     /*!< ADC conversions sampling phase starts immediately after end of conversion, and stops upon trigger event.
+                                                                                 Note: First conversion is using minimal sampling time (see @ref ADC_LL_EC_CHANNEL_SAMPLINGTIME). On devices STM32H72xx and STM32H73xx */
+#define LL_ADC_REG_SAMPLING_MODE_TRIGGER_CONTROLED    (ADC3_CFGR2_SMPTRIG)  /*!< ADC conversions sampling phase is controlled by trigger events:
+                                                                                 Trigger rising edge  = start sampling
+                                                                                 Trigger falling edge = stop sampling and start conversion. On devices STM32H72xx and STM32H73xx */
+/**
+  * @}
+  */ 
+#endif /* ADC_VER_V5_V90 */
 
 /** @defgroup ADC_LL_EC_REG_CONTINUOUS_MODE  ADC group regular - Continuous mode
 * @{
@@ -914,6 +1036,19 @@ typedef struct
 /**
   * @}
   */
+
+#if defined(ADC_VER_V5_V90)
+/** @defgroup ADC_LL_EC_REG_DMA_TRANSFER  ADC group regular - DMA transfer of ADC conversion data
+  * @{
+  */
+
+#define LL_ADC3_REG_DMA_TRANSFER_NONE       (0x00000000UL)                        /*!< ADC conversions are not transferred by DMA. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC3_REG_DMA_TRANSFER_LIMITED    (                  ADC3_CFGR_DMAEN)    /*!< ADC conversion data are transferred by DMA, in limited mode (one shot mode): DMA transfer requests are stopped when number of DMA data transfers (number of ADC conversions) is reached. This ADC mode is intended to be used with DMA mode non-circular. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC3_REG_DMA_TRANSFER_UNLIMITED  (ADC3_CFGR_DMACFG | ADC3_CFGR_DMAEN)    /*!< ADC conversion data are transferred by DMA, in unlimited mode: DMA transfer requests are unlimited, whatever number of DMA data transferred (number of ADC conversions). This ADC mode is intended to be used with DMA mode circular. On ADC3 of devices STM32H72xx and STM32H73xx*/
+/**
+  * @}
+  */
+#endif
 
 /** @defgroup ADC_LL_EC_REG_OVR_DATA_BEHAVIOR  ADC group regular - Overrun behavior on conversion data
 * @{
@@ -1011,6 +1146,8 @@ typedef struct
 #define LL_ADC_INJ_TRIG_EXT_LPTIM1_OUT     (ADC_JSQR_JEXTSEL_4 | ADC_JSQR_JEXTSEL_1 | ADC_INJ_TRIG_EXT_EDGE_DEFAULT)                                                                              /*!< ADC group injected conversion trigger from external peripheral: LPTIM1 OUT event. Trigger edge set to rising edge (default setting). */
 #define LL_ADC_INJ_TRIG_EXT_LPTIM2_OUT     (ADC_JSQR_JEXTSEL_4 | ADC_JSQR_JEXTSEL_1 | ADC_JSQR_JEXTSEL_0 | ADC_INJ_TRIG_EXT_EDGE_DEFAULT)                         /*!< ADC group injected conversion trigger from external peripheral: LPTIM2 OUT event. Trigger edge set to rising edge (default setting). */
 #define LL_ADC_INJ_TRIG_EXT_LPTIM3_OUT     (ADC_JSQR_JEXTSEL_4 | ADC_JSQR_JEXTSEL_2 | ADC_INJ_TRIG_EXT_EDGE_DEFAULT)                                              /*!< ADC group injected conversion trigger from external peripheral: LPTIM3 OUT event. 4 event (capture compare: input capture or output capture). Trigger edge set to rising edge (default setting). */
+#define LL_ADC_INJ_TRIG_EXT_TIM23_TRGO     (ADC_JSQR_JEXTSEL_4 | ADC_JSQR_JEXTSEL_2 | ADC_JSQR_JEXTSEL_0 | ADC_INJ_TRIG_EXT_EDGE_DEFAULT)                       /*!< ADC group regular conversion trigger from external peripheral: TIM23 TRGO event. Trigger edge set to rising edge (default setting). */
+#define LL_ADC_INJ_TRIG_EXT_TIM24_TRGO     (ADC_JSQR_JEXTSEL_4 | ADC_JSQR_JEXTSEL_2 | ADC_JSQR_JEXTSEL_1 | ADC_INJ_TRIG_EXT_EDGE_DEFAULT)                       /*!< ADC group regular conversion trigger from external peripheral: TIM24 TRGO event. Trigger edge set to rising edge (default setting). */
 /**
   * @}
   */
@@ -1089,6 +1226,22 @@ typedef struct
 /**
   * @}
   */
+#if defined(ADC_VER_V5_V90)
+/** @defgroup ADC_LL_EC_CHANNEL_SAMPLINGTIME  Channel - Sampling time
+  * @{
+  */
+#define LL_ADC_SAMPLINGTIME_ADC3_2CYCLES_5      (0x00000000UL)                                              /*!< Sampling time 2.5 ADC clock cycles. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_SAMPLINGTIME_ADC3_6CYCLES_5      (                                        ADC_SMPR2_SMP10_0) /*!< Sampling time 6.5 ADC clock cycles. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_SAMPLINGTIME_ADC3_12CYCLES_5     (                    ADC_SMPR2_SMP10_1                    ) /*!< Sampling time 12.5 ADC clock cycles. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_SAMPLINGTIME_ADC3_24CYCLES_5     (                    ADC_SMPR2_SMP10_1 | ADC_SMPR2_SMP10_0) /*!< Sampling time 24.5 ADC clock cycles. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_SAMPLINGTIME_ADC3_47CYCLES_5     (ADC_SMPR2_SMP10_2                                        ) /*!< Sampling time 47.5 ADC clock cycles. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_SAMPLINGTIME_ADC3_92CYCLES_5     (ADC_SMPR2_SMP10_2                     | ADC_SMPR2_SMP10_0) /*!< Sampling time 92.5 ADC clock cycles. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_SAMPLINGTIME_ADC3_247CYCLES_5    (ADC_SMPR2_SMP10_2 | ADC_SMPR2_SMP10_1                    ) /*!< Sampling time 247.5 ADC clock cycles. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_SAMPLINGTIME_ADC3_640CYCLES_5    (ADC_SMPR2_SMP10_2 | ADC_SMPR2_SMP10_1 | ADC_SMPR2_SMP10_0) /*!< Sampling time 640.5 ADC clock cycles. On ADC3 of devices STM32H72xx and STM32H73xx */
+/**
+  * @}
+  */
+#endif  /* ADC_VER_V5_V90 */
 
 /** @defgroup ADC_LL_EC_CHANNEL_SINGLE_DIFF_ENDING  Channel - Single or differential ending
   * @{
@@ -1204,6 +1357,22 @@ typedef struct
 /**
   * @}
   */
+#if defined(ADC_VER_V5_V90)
+/** @defgroup ADC_LL_EC_AWD_FILTERING_CONFIG  Analog watchdog - filtering config
+  * @{
+  */
+#define LL_ADC_AWD_FILTERING_NONE          (0x00000000UL)                                                   /*!< ADC analog wathdog no filtering, one out-of-window sample is needed to raise flag or interrupt. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_AWD_FILTERING_2SAMPLES      (                                          ADC3_TR1_AWDFILT_0)   /*!< ADC analog wathdog 2 consecutives out-of-window samples are needed to raise flag or interrupt. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_AWD_FILTERING_3SAMPLES      (                     ADC3_TR1_AWDFILT_1                     )   /*!< ADC analog wathdog 3 consecutives out-of-window samples are needed to raise flag or interrupt. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_AWD_FILTERING_4SAMPLES      (                     ADC3_TR1_AWDFILT_1 | ADC3_TR1_AWDFILT_0)   /*!< ADC analog wathdog 4 consecutives out-of-window samples are needed to raise flag or interrupt. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_AWD_FILTERING_5SAMPLES      (ADC3_TR1_AWDFILT_2                                          )   /*!< ADC analog wathdog 5 consecutives out-of-window samples are needed to raise flag or interrupt. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_AWD_FILTERING_6SAMPLES      (ADC3_TR1_AWDFILT_2 |                      ADC3_TR1_AWDFILT_0)   /*!< ADC analog wathdog 6 consecutives out-of-window samples are needed to raise flag or interrupt. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_AWD_FILTERING_7SAMPLES      (ADC3_TR1_AWDFILT_2 | ADC3_TR1_AWDFILT_1                     )   /*!< ADC analog wathdog 7 consecutives out-of-window samples are needed to raise flag or interrupt. On ADC3 of devices STM32H72xx and STM32H73xx */
+#define LL_ADC_AWD_FILTERING_8SAMPLES      (ADC3_TR1_AWDFILT_2 | ADC3_TR1_AWDFILT_1 | ADC3_TR1_AWDFILT_0)   /*!< ADC analog wathdog 8 consecutives out-of-window samples are needed to raise flag or interrupt. On ADC3 of devices STM32H72xx and STM32H73xx */
+/**
+  * @}
+  */
+#endif /* ADC_VER_V5_V90 */
 
 /** @defgroup ADC_LL_EC_OVS_SCOPE  Oversampling - Oversampling scope
   * @{
@@ -1225,6 +1394,22 @@ typedef struct
 /**
   * @}
   */
+#if defined(ADC_VER_V5_V90)
+/** @defgroup ADC_LL_EC_OVS_RATIO  Oversampling - Ratio
+  * @{
+  */
+#define LL_ADC_OVS_RATIO_2                 (0x00000000UL)                                               /*!< ADC oversampling ratio of 2 (2 ADC conversions are performed, sum of these conversions data is computed to result as the ADC oversampling conversion data (before potential shift) */
+#define LL_ADC_OVS_RATIO_4                 (                                        ADC3_CFGR2_OVSR_0)  /*!< ADC oversampling ratio of 4 (4 ADC conversions are performed, sum of these conversions data is computed to result as the ADC oversampling conversion data (before potential shift) */
+#define LL_ADC_OVS_RATIO_8                 (                    ADC3_CFGR2_OVSR_1                    )  /*!< ADC oversampling ratio of 8 (8 ADC conversions are performed, sum of these conversions data is computed to result as the ADC oversampling conversion data (before potential shift) */
+#define LL_ADC_OVS_RATIO_16                (                    ADC3_CFGR2_OVSR_1 | ADC3_CFGR2_OVSR_0)  /*!< ADC oversampling ratio of 16 (16 ADC conversions are performed, sum of these conversions data is computed to result as the ADC oversampling conversion data (before potential shift) */
+#define LL_ADC_OVS_RATIO_32                (ADC3_CFGR2_OVSR_2                                        )  /*!< ADC oversampling ratio of 32 (32 ADC conversions are performed, sum of these conversions data is computed to result as the ADC oversampling conversion data (before potential shift) */
+#define LL_ADC_OVS_RATIO_64                (ADC3_CFGR2_OVSR_2                     | ADC3_CFGR2_OVSR_0)  /*!< ADC oversampling ratio of 64 (64 ADC conversions are performed, sum of these conversions data is computed to result as the ADC oversampling conversion data (before potential shift) */
+#define LL_ADC_OVS_RATIO_128               (ADC3_CFGR2_OVSR_2 | ADC3_CFGR2_OVSR_1                    )  /*!< ADC oversampling ratio of 128 (128 ADC conversions are performed, sum of these conversions data is computed to result as the ADC oversampling conversion data (before potential shift) */
+#define LL_ADC_OVS_RATIO_256               (ADC3_CFGR2_OVSR_2 | ADC3_CFGR2_OVSR_1 | ADC3_CFGR2_OVSR_0)  /*!< ADC oversampling ratio of 256 (256 ADC conversions are performed, sum of these conversions data is computed to result as the ADC oversampling conversion data (before potential shift) */
+/**
+  * @}
+  */
+#endif  /* ADC_VER_V5_V90 */
 
 /** @defgroup ADC_LL_EC_OVS_SHIFT  Oversampling - Data shift
   * @{
@@ -1407,6 +1592,41 @@ typedef struct
   * @{
   */
 
+#if defined(ADC_VER_V5_V90)
+/**
+  * @brief  Helper macro to convert the resolution defines to STM32H73x/2x ADC3 registers values
+  *         value corresponding to the ADC3 resolution according to the STM32H73x/2x RefMan.
+  * @note   The input can be a value from ADC3 resolution (12b, 10b, 8b,6b)
+  * @param  __ADC_RESOLUTION__ This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_RESOLUTION_12B
+  *         @arg @ref LL_ADC_RESOLUTION_10B
+  *         @arg @ref LL_ADC_RESOLUTION_8B
+  *         @arg @ref LL_ADC_RESOLUTION_6B
+  * @retval Returned value can be one of the following values:
+  *         @arg 0x00000000UL (value correspodning to ADC3 12 bits)
+  *         @arg ADC_CFGR_RES_0 = 0x00000004  (value corresponding to ADC3 10 bits)
+  *         @arg ADC_CFGR_RES_1 = 0x00000008 (value corresponding to ADC3 8 bits)
+  *         @arg 0x0000001C (value corresponding to ADC3 6 bits)
+  * @note   This helper macro is applicable for STM32H73x/2x devices only
+  */
+#define __LL_ADC12_RESOLUTION_TO_ADC3(__ADC_RESOLUTION__)                      \
+         (                                                                     \
+           ((__ADC_RESOLUTION__) == LL_ADC_RESOLUTION_12B)                     \
+            ?(0x00000000UL)                                                    \
+             :                                                                 \
+             ((__ADC_RESOLUTION__) == LL_ADC_RESOLUTION_10B)                   \
+               ?(ADC_CFGR_RES_0)                                               \
+                :                                                              \
+                ((__ADC_RESOLUTION__) == LL_ADC_RESOLUTION_8B)                 \
+                  ?(ADC_CFGR_RES_1)                                            \
+                   :                                                           \
+                   ((__ADC_RESOLUTION__) == LL_ADC_RESOLUTION_6B)              \
+                     ?((ADC_CFGR_RES_2|ADC_CFGR_RES_1 | ADC_CFGR_RES_0))       \
+                       :(0x00000000UL)                                         \
+         )
+
+#endif /* ADC_VER_V5_V90 */
+
 /**
   * @brief  Helper macro to get ADC channel number in decimal format
   *         from literals LL_ADC_CHANNEL_x.
@@ -1442,7 +1662,7 @@ typedef struct
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -1493,7 +1713,7 @@ typedef struct
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -1560,7 +1780,7 @@ typedef struct
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -1610,7 +1830,7 @@ typedef struct
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -1660,12 +1880,13 @@ typedef struct
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.
   * @retval Value "0" if the internal channel selected is not available on the ADC instance selected.
   *         Value "1" if the internal channel selected is available on the ADC instance selected.
   */
+#if defined(ADC3)
 #define __LL_ADC_IS_CHANNEL_INTERNAL_AVAILABLE(__ADC_INSTANCE__, __CHANNEL__)  \
   ((((__ADC_INSTANCE__) == ADC2)                                               \
     &&(                                                                        \
@@ -1682,6 +1903,20 @@ typedef struct
       )                                                                        \
    )                                                                           \
   )
+#else
+#define __LL_ADC_IS_CHANNEL_INTERNAL_AVAILABLE(__ADC_INSTANCE__, __CHANNEL__)  \
+  ((((__ADC_INSTANCE__) == ADC2)                                               \
+    &&(                                                                        \
+       ((__CHANNEL__) == LL_ADC_CHANNEL_DAC1CH1_ADC2) ||                       \
+       ((__CHANNEL__) == LL_ADC_CHANNEL_DAC1CH2_ADC2) ||                       \
+       ((__CHANNEL__) == LL_ADC_CHANNEL_TEMPSENSOR)   ||                       \
+       ((__CHANNEL__) == LL_ADC_CHANNEL_VBAT)         ||                       \
+       ((__CHANNEL__) == LL_ADC_CHANNEL_VREFINT)                               \
+      )                                                                        \
+   )                                                                           \
+  )
+#endif
+
 /**
   * @brief  Helper macro to define ADC analog watchdog parameter:
   *         define a single channel to monitor with analog watchdog
@@ -1717,7 +1952,7 @@ typedef struct
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -1809,7 +2044,7 @@ typedef struct
   *         @arg @ref LL_ADC_AWD_CH_DAC1CH2_ADC2_REG     (0)(2)
   *         @arg @ref LL_ADC_AWD_CH_DAC1CH2_ADC2_INJ     (0)(2)
   *         @arg @ref LL_ADC_AWD_CH_DAC1CH2_ADC2_REG_INJ    (2)
-  *         
+  *
   *         (0) On STM32H7, parameter available only on analog watchdog number: AWD1.\n
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.
@@ -1932,6 +2167,7 @@ typedef struct
   * @param  __ADCx__ ADC instance
   * @retval ADC common register instance
   */
+#if defined(ADC3_COMMON)
 #define __LL_ADC_COMMON_INSTANCE(__ADCx__)                                     \
   ((((__ADCx__) == ADC1) || ((__ADCx__) == ADC2))                              \
     ? (                                                                        \
@@ -1942,6 +2178,9 @@ typedef struct
        (ADC3_COMMON)                                                           \
       )                                                                        \
   )
+#else
+#define __LL_ADC_COMMON_INSTANCE(__ADCx__)   (ADC12_COMMON)
+#endif
 
 /**
   * @brief  Helper macro to check if all ADC instances sharing the same
@@ -1994,6 +2233,23 @@ typedef struct
 #define __LL_ADC_DIGITAL_SCALE(__ADC_RESOLUTION__)                             \
   (0xFFFFUL >> ((__ADC_RESOLUTION__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL)))
 
+#if defined(ADC_VER_V5_V90)
+/**
+  * @brief  Helper macro to define the ADC conversion data full-scale digital
+  *         value corresponding to the selected ADC resolution.
+  * @note   ADC conversion data full-scale corresponds to voltage range
+  *         determined by analog voltage references Vref+ and Vref-
+  *         (refer to reference manual).
+  * @param  __ADC_RESOLUTION__ This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_RESOLUTION_12B
+  *         @arg @ref LL_ADC_RESOLUTION_10B
+  *         @arg @ref LL_ADC_RESOLUTION_8B
+  *         @arg @ref LL_ADC_RESOLUTION_6B
+  * @retval ADC conversion data equivalent voltage value (unit: digital value of ADC conversion bitfield)
+  */
+#define __LL_ADC3_DIGITAL_SCALE(__ADC_RESOLUTION__)                             \
+    (0xFFFUL >> ((__ADC_RESOLUTION__) >> (ADC_CFGR_RES_BITOFFSET_POS_ADC3 - 1UL)))
+#endif  /* ADC_VER_V5_V90 */
 /**
   * @brief  Helper macro to convert the ADC conversion data from
   *         a resolution to another resolution.
@@ -2014,14 +2270,90 @@ typedef struct
   *         @arg @ref LL_ADC_RESOLUTION_8B
   * @retval ADC conversion data to the requested resolution
   */
+#if defined(ADC_VER_V5_X) || defined(ADC_VER_V5_V90)
 #define __LL_ADC_CONVERT_DATA_RESOLUTION(__DATA__,\
+                                         __ADC_RESOLUTION_CURRENT__,\
+                                         __ADC_RESOLUTION_TARGET__) \
+( (__ADC_RESOLUTION_CURRENT__ == LL_ADC_RESOLUTION_8B)                                                               \
+  ?(                                                                                                                 \
+    ((__DATA__)                                                                                                      \
+    << (((__ADC_RESOLUTION_CURRENT__) & ~(ADC_CFGR_RES_1 | ADC_CFGR_RES_0) ) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL)))  \
+   >> ((__ADC_RESOLUTION_TARGET__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL))                                            \
+   )                                                                                                                 \
+  :                                                                                                                  \
+   (                                                                                                                 \
+     (__ADC_RESOLUTION_TARGET__ == LL_ADC_RESOLUTION_8B) \
+       ? ( \
+           ((__DATA__)                                                                                                      \
+            << ((__ADC_RESOLUTION_CURRENT__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL)))                                         \
+           >> (((__ADC_RESOLUTION_TARGET__) & ~(ADC_CFGR_RES_1 | ADC_CFGR_RES_0) ) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL))    \
+           )                                                                                                                 \
+         :\
+          (\
+    ((__DATA__)                                                                                                      \
+    << ((__ADC_RESOLUTION_CURRENT__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL)))                                         \
+    >> ((__ADC_RESOLUTION_TARGET__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL))                                            \
+     )                                                                                                                 \
+   )\
+ )
+
+
+#else /* defined(ADC_VER_V5_3) */
+#define __LL_ADC_CONVERT_DATA_RESOLUTION(__DATA__,\
+                                         __ADC_RESOLUTION_CURRENT__,\
+                                         __ADC_RESOLUTION_TARGET__) \
+( (__ADC_RESOLUTION_CURRENT__ == LL_ADC_RESOLUTION_8B)                                                               \
+  ?(                                                                                                                 \
+    ((__DATA__)                                                                                                      \
+    << (((__ADC_RESOLUTION_CURRENT__) & ~(ADC_CFGR_RES_1 | ADC_CFGR_RES_0) ) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL)))  \
+   >> ((__ADC_RESOLUTION_TARGET__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL))                                            \
+   )                                                                                                                 \
+  :                                                                                                                  \
+   (                                                                                                                 \
+     (__ADC_RESOLUTION_TARGET__ == LL_ADC_RESOLUTION_8B) \
+       ? ( \
+           ((__DATA__)                                                                                                      \
+            << ((__ADC_RESOLUTION_CURRENT__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL)))                                         \
+           >> (((__ADC_RESOLUTION_TARGET__) & ~(ADC_CFGR_RES_1 | ADC_CFGR_RES_0) ) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL))                                            \
+           )                                                                                                                 \
+         :\
+          (\
+    ((__DATA__)                                                                                                      \
+    << ((__ADC_RESOLUTION_CURRENT__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL)))                                         \
+    >> ((__ADC_RESOLUTION_TARGET__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL))                                            \
+     )                                                                                                                 \
+   )\
+ )
+
+#endif
+
+#if defined(ADC_VER_V5_V90)
+/**
+* @brief  Helper macro to convert the ADC conversion data from
+*         a resolution to another resolution.
+* @param  __DATA__ ADC conversion data to be converted
+* @param  __ADC_RESOLUTION_CURRENT__ Resolution of the data to be converted
+*         This parameter can be one of the following values:
+*         @arg @ref LL_ADC_RESOLUTION_12B
+*         @arg @ref LL_ADC_RESOLUTION_10B
+*         @arg @ref LL_ADC_RESOLUTION_8B
+*         @arg @ref LL_ADC_RESOLUTION_6B
+* @param  __ADC_RESOLUTION_TARGET__ Resolution of the data after conversion
+*         This parameter can be one of the following values:
+*         @arg @ref LL_ADC_RESOLUTION_12B
+*         @arg @ref LL_ADC_RESOLUTION_10B
+*         @arg @ref LL_ADC_RESOLUTION_8B
+*         @arg @ref LL_ADC_RESOLUTION_6B
+* @retval ADC conversion data to the requested resolution
+*/
+#define __LL_ADC_CONVERT_DATA_RESOLUTION_ADC3(__DATA__,\
                                          __ADC_RESOLUTION_CURRENT__,\
                                          __ADC_RESOLUTION_TARGET__)            \
   (((__DATA__)                                                                 \
-    << ((__ADC_RESOLUTION_CURRENT__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL)))   \
-   >> ((__ADC_RESOLUTION_TARGET__) >> (ADC_CFGR_RES_BITOFFSET_POS - 1UL))      \
+    << ((__ADC_RESOLUTION_CURRENT__) >> (ADC_CFGR_RES_BITOFFSET_POS_ADC3 - 1UL)))  \
+   >> ((__ADC_RESOLUTION_TARGET__) >> (ADC_CFGR_RES_BITOFFSET_POS_ADC3 - 1UL))     \
   )
-
+#endif  /* ADC_VER_V5_V90 */
 /**
   * @brief  Helper macro to calculate the voltage (unit: mVolt)
   *         corresponding to a ADC conversion data (unit: digital value).
@@ -2253,17 +2585,17 @@ typedef struct
   */
 __STATIC_INLINE uint32_t LL_ADC_DMA_GetRegAddr(ADC_TypeDef *ADCx, uint32_t Register)
 {
-  register uint32_t data_reg_addr;
+  uint32_t data_reg_addr;
 
   if (Register == LL_ADC_DMA_REG_REGULAR_DATA)
   {
     /* Retrieve address of register DR */
-    data_reg_addr = (uint32_t)&(ADCx->DR);
+    data_reg_addr = (uint32_t) & (ADCx->DR);
   }
   else /* (Register == LL_ADC_DMA_REG_REGULAR_DATA_MULTI) */
   {
     /* Retrieve address of register CDR */
-    data_reg_addr = (uint32_t)&((__LL_ADC_COMMON_INSTANCE(ADCx))->CDR);
+    data_reg_addr = (uint32_t) & ((__LL_ADC_COMMON_INSTANCE(ADCx))->CDR);
   }
 
   return data_reg_addr;
@@ -2450,9 +2782,15 @@ __STATIC_INLINE uint32_t LL_ADC_GetCommonPathInternalCh(ADC_Common_TypeDef *ADCx
   */
 __STATIC_INLINE void LL_ADC_SetCalibrationOffsetFactor(ADC_TypeDef *ADCx, uint32_t SingleDiff, uint32_t CalibrationFactor)
 {
+#if defined(ADC_VER_V5_V90)  
+  MODIFY_REG(ADCx->CALFACT_RES13,
+             SingleDiff & ADC_SINGLEDIFF_CALIB_FACTOR_MASK,
+             CalibrationFactor << (((SingleDiff & ADC_SINGLEDIFF_CALIB_F_BIT_D_MASK) >> ADC_SINGLEDIFF_CALIB_F_BIT_D_SHIFT4) & ~(SingleDiff & ADC_CALFACT_CALFACT_S)));
+#else
   MODIFY_REG(ADCx->CALFACT,
              SingleDiff & ADC_SINGLEDIFF_CALIB_FACTOR_MASK,
              CalibrationFactor << (((SingleDiff & ADC_SINGLEDIFF_CALIB_F_BIT_D_MASK) >> ADC_SINGLEDIFF_CALIB_F_BIT_D_SHIFT4) & ~(SingleDiff & ADC_CALFACT_CALFACT_S)));
+#endif
 }
 
 /**
@@ -2479,7 +2817,11 @@ __STATIC_INLINE uint32_t LL_ADC_GetCalibrationOffsetFactor(ADC_TypeDef *ADCx, ui
   /* "SingleDiff".                                                            */
   /* Parameter used with mask "ADC_SINGLEDIFF_CALIB_FACTOR_MASK" because      */
   /* containing other bits reserved for other purpose.                        */
+#if defined(ADC_VER_V5_V90)
+  return (uint32_t)(READ_BIT(ADCx->CALFACT_RES13, (SingleDiff & ADC_SINGLEDIFF_CALIB_FACTOR_MASK)) >> ((SingleDiff & ADC_SINGLEDIFF_CALIB_F_BIT_D_MASK) >> ADC_SINGLEDIFF_CALIB_F_BIT_D_SHIFT4));
+#else
   return (uint32_t)(READ_BIT(ADCx->CALFACT, (SingleDiff & ADC_SINGLEDIFF_CALIB_FACTOR_MASK)) >> ((SingleDiff & ADC_SINGLEDIFF_CALIB_F_BIT_D_MASK) >> ADC_SINGLEDIFF_CALIB_F_BIT_D_SHIFT4));
+#endif
 }
 
 /**
@@ -2506,13 +2848,26 @@ __STATIC_INLINE uint32_t LL_ADC_GetCalibrationOffsetFactor(ADC_TypeDef *ADCx, ui
   */
 __STATIC_INLINE void LL_ADC_SetCalibrationLinearFactor(ADC_TypeDef *ADCx, uint32_t LinearityWord, uint32_t CalibrationFactor)
 {
-  register uint32_t timeout_cpu_cycles = ADC_LINEARITY_BIT_TOGGLE_TIMEOUT;
+#if defined(ADC_VER_V5_V90)
+  if (ADCx != ADC3)
+  {
+    uint32_t timeout_cpu_cycles = ADC_LINEARITY_BIT_TOGGLE_TIMEOUT;
+    MODIFY_REG(ADCx->CALFACT2_RES14, ADC_CALFACT2_LINCALFACT, CalibrationFactor);
+    MODIFY_REG(ADCx->CR, ADC_CR_ADCALLIN, LinearityWord);
+    while ((READ_BIT(ADCx->CR, LinearityWord) == 0UL) && (timeout_cpu_cycles > 0UL))
+    {
+      timeout_cpu_cycles--;
+    }
+  }
+#else /* ADC_VER_V5_V90 */
+  uint32_t timeout_cpu_cycles = ADC_LINEARITY_BIT_TOGGLE_TIMEOUT;
   MODIFY_REG(ADCx->CALFACT2, ADC_CALFACT2_LINCALFACT, CalibrationFactor);
   MODIFY_REG(ADCx->CR, ADC_CR_ADCALLIN, LinearityWord);
-  while ((READ_BIT(ADCx->CR, LinearityWord)==0UL) && (timeout_cpu_cycles > 0UL))
+  while ((READ_BIT(ADCx->CR, LinearityWord) == 0UL) && (timeout_cpu_cycles > 0UL))
   {
     timeout_cpu_cycles--;
   }
+#endif
 }
 
 /**
@@ -2533,13 +2888,17 @@ __STATIC_INLINE void LL_ADC_SetCalibrationLinearFactor(ADC_TypeDef *ADCx, uint32
   */
 __STATIC_INLINE uint32_t LL_ADC_GetCalibrationLinearFactor(ADC_TypeDef *ADCx, uint32_t LinearityWord)
 {
-  register uint32_t timeout_cpu_cycles = ADC_LINEARITY_BIT_TOGGLE_TIMEOUT;
+  uint32_t timeout_cpu_cycles = ADC_LINEARITY_BIT_TOGGLE_TIMEOUT;
   CLEAR_BIT(ADCx->CR, LinearityWord);
-  while ((READ_BIT(ADCx->CR, LinearityWord)!=0UL) && (timeout_cpu_cycles > 0UL))
+  while ((READ_BIT(ADCx->CR, LinearityWord) != 0UL) && (timeout_cpu_cycles > 0UL))
   {
     timeout_cpu_cycles--;
   }
+#if defined(ADC_VER_V5_V90)
+  return (uint32_t)(READ_BIT(ADCx->CALFACT2_RES14, ADC_CALFACT2_LINCALFACT));
+#else
   return (uint32_t)(READ_BIT(ADCx->CALFACT2, ADC_CALFACT2_LINCALFACT));
+#endif
 }
 /**
   * @brief  Set ADC resolution.
@@ -2561,13 +2920,41 @@ __STATIC_INLINE uint32_t LL_ADC_GetCalibrationLinearFactor(ADC_TypeDef *ADCx, ui
   */
 __STATIC_INLINE void LL_ADC_SetResolution(ADC_TypeDef *ADCx, uint32_t Resolution)
 {
-  if((DBGMCU->IDCODE & 0x30000000UL) == 0x10000000UL) /* Rev.Y */
+#if defined(ADC_VER_V5_3)
+
+  MODIFY_REG(ADCx->CFGR, ADC_CFGR_RES, Resolution);
+
+#elif defined(ADC_VER_V5_V90)
+  if (ADCx == ADC3)
+  {
+    MODIFY_REG(ADCx->CFGR, ADC3_CFGR_RES, (((Resolution & 0x10UL) | 0x08UL | (Resolution & 0x04UL))  & 0x00000018UL));
+  }
+  else
+  {
+    if ((DBGMCU->IDCODE & 0x30000000UL) == 0x10000000UL) /* Rev.Y */
+    {
+      MODIFY_REG(ADCx->CFGR, ADC_CFGR_RES, Resolution);
+    }
+    else /* Rev.V */
+    {
+      if (LL_ADC_RESOLUTION_8B == Resolution)
+      {
+        MODIFY_REG(ADCx->CFGR, ADC_CFGR_RES, Resolution | 0x0000000CUL);
+      }
+      else
+      {
+        MODIFY_REG(ADCx->CFGR, ADC_CFGR_RES, Resolution);
+      }
+    }
+  }
+#else /* ADC_VER_V5_V90 */
+  if ((DBGMCU->IDCODE & 0x30000000UL) == 0x10000000UL) /* Rev.Y */
   {
     MODIFY_REG(ADCx->CFGR, ADC_CFGR_RES, Resolution);
   }
-  else /* rev.V */
+  else /* Rev.V */
   {
-    if(LL_ADC_RESOLUTION_8B == Resolution)
+    if (LL_ADC_RESOLUTION_8B == Resolution)
     {
       MODIFY_REG(ADCx->CFGR, ADC_CFGR_RES, Resolution | 0x0000000CUL);
     }
@@ -2576,6 +2963,8 @@ __STATIC_INLINE void LL_ADC_SetResolution(ADC_TypeDef *ADCx, uint32_t Resolution
       MODIFY_REG(ADCx->CFGR, ADC_CFGR_RES, Resolution);
     }
   }
+
+#endif /* ADC_VER_V5_X*/
 }
 
 /**
@@ -2590,12 +2979,18 @@ __STATIC_INLINE void LL_ADC_SetResolution(ADC_TypeDef *ADCx, uint32_t Resolution
   *         @arg @ref LL_ADC_RESOLUTION_12B
   *         @arg @ref LL_ADC_RESOLUTION_10B
   *         @arg @ref LL_ADC_RESOLUTION_8B
+   *         @arg @ref LL_ADC_RESOLUTION_6B   **Value available for ADC3 on STM32H72x/3x devices only **
   */
 __STATIC_INLINE uint32_t LL_ADC_GetResolution(ADC_TypeDef *ADCx)
 {
-  if((DBGMCU->IDCODE & 0x30000000UL) == 0x10000000UL) /* Rev.Y */
+#if defined (ADC_VER_V5_3)
+
+  return (uint32_t)(READ_BIT(ADCx->CFGR, ADC_CFGR_RES));
+
+#elif defined(ADC_VER_V5_V90)
+  if (ADCx == ADC3)
   {
-    return (uint32_t)(READ_BIT(ADCx->CFGR, ADC_CFGR_RES));
+    return (uint32_t)(READ_BIT(ADCx->CFGR, ADC3_CFGR_RES));
   }
   else
   {
@@ -2608,6 +3003,25 @@ __STATIC_INLINE uint32_t LL_ADC_GetResolution(ADC_TypeDef *ADCx)
       return (uint32_t)(READ_BIT(ADCx->CFGR, ADC_CFGR_RES));
     }
   }
+
+#else  /* ADC_VER_V5_V90 */
+  if ((DBGMCU->IDCODE & 0x30000000UL) == 0x10000000UL) /* Rev.Y */
+  {
+    return (uint32_t)(READ_BIT(ADCx->CFGR, ADC_CFGR_RES));
+  }
+  else /* Rev.V */
+  {
+    if ((uint32_t)(READ_BIT(ADCx->CFGR, ADC_CFGR_RES)) == 0x0000001CUL)
+    {
+      return (LL_ADC_RESOLUTION_8B);
+    }
+    else
+    {
+      return (uint32_t)(READ_BIT(ADCx->CFGR, ADC_CFGR_RES));
+    }
+  }
+
+#endif /* ADC_VER_V5_X */
 }
 
 /**
@@ -2712,6 +3126,51 @@ __STATIC_INLINE uint32_t LL_ADC_GetLowPowerMode(ADC_TypeDef *ADCx)
 }
 
 /**
+  * @brief  Set ADC selected Channel.
+  * @note   This function set the pre-selection of channel configuration.
+  * @note   Caution: Channel selections is dependent to ADC instance and IP version:
+  *         For STM32H72x/3x This is applicable only for ADC1/ADC2
+  *         For Rest of STM32H7xxx This is applicable only all the ADCs instances.
+  * 
+  * @param  ADCx ADC instance
+  * @param  Channel This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_CHANNEL_0           
+  *         @arg @ref LL_ADC_CHANNEL_1           
+  *         @arg @ref LL_ADC_CHANNEL_2           
+  *         @arg @ref LL_ADC_CHANNEL_3           
+  *         @arg @ref LL_ADC_CHANNEL_4           
+  *         @arg @ref LL_ADC_CHANNEL_5           
+  *         @arg @ref LL_ADC_CHANNEL_6
+  *         @arg @ref LL_ADC_CHANNEL_7
+  *         @arg @ref LL_ADC_CHANNEL_8
+  *         @arg @ref LL_ADC_CHANNEL_9
+  *         @arg @ref LL_ADC_CHANNEL_10
+  *         @arg @ref LL_ADC_CHANNEL_11
+  *         @arg @ref LL_ADC_CHANNEL_12
+  *         @arg @ref LL_ADC_CHANNEL_13
+  *         @arg @ref LL_ADC_CHANNEL_14
+  *         @arg @ref LL_ADC_CHANNEL_15
+  *         @arg @ref LL_ADC_CHANNEL_16
+  *         @arg @ref LL_ADC_CHANNEL_17
+  *         @arg @ref LL_ADC_CHANNEL_18
+  *         @arg @ref LL_ADC_CHANNEL_19
+  * @retval None
+  */
+__STATIC_INLINE void LL_ADC_SetChannelPreSelection(ADC_TypeDef *ADCx, uint32_t Channel)
+{
+#if defined(ADC_VER_V5_V90)
+    if (ADCx != ADC3)
+    {
+      /* ADC channels preselection */
+      ADCx->PCSEL_RES0 |= (1UL << (__LL_ADC_CHANNEL_TO_DECIMAL_NB(Channel) & 0x1FUL));
+    }
+#else
+    /* ADC channels preselection */
+    ADCx->PCSEL |= (1UL << (__LL_ADC_CHANNEL_TO_DECIMAL_NB(Channel) & 0x1FUL));
+#endif /* ADC_VER_V5_V90 */
+}
+
+/**
   * @brief  Set ADC selected offset number 1, 2, 3 or 4.
   * @note   This function set the 2 items of offset configuration:
   *         - ADC channel to which the offset programmed will be applied
@@ -2776,7 +3235,7 @@ __STATIC_INLINE uint32_t LL_ADC_GetLowPowerMode(ADC_TypeDef *ADCx)
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -2786,11 +3245,21 @@ __STATIC_INLINE uint32_t LL_ADC_GetLowPowerMode(ADC_TypeDef *ADCx)
   */
 __STATIC_INLINE void LL_ADC_SetOffset(ADC_TypeDef *ADCx, uint32_t Offsety, uint32_t Channel, uint32_t OffsetLevel)
 {
-  register __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
-
-  MODIFY_REG(*preg,
-             ADC_OFR1_OFFSET1_CH | ADC_OFR1_OFFSET1,
-             (Channel & ADC_CHANNEL_ID_NUMBER_MASK) | OffsetLevel);
+  __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+#if defined(ADC_VER_V5_V90)
+  if (ADCx == ADC3)
+  {
+    MODIFY_REG(*preg,
+               ADC3_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH | ADC_OFR1_OFFSET1,
+               ADC3_OFR1_OFFSET1_EN | (Channel & ADC_CHANNEL_ID_NUMBER_MASK) | OffsetLevel);
+  }
+  else
+#endif /* ADC_VER_V5_V90 */
+  {
+    MODIFY_REG(*preg,
+               ADC_OFR1_OFFSET1_CH | ADC_OFR1_OFFSET1,
+               (Channel & ADC_CHANNEL_ID_NUMBER_MASK) | OffsetLevel);
+  }
 }
 
 /**
@@ -2847,7 +3316,7 @@ __STATIC_INLINE void LL_ADC_SetOffset(ADC_TypeDef *ADCx, uint32_t Offsety, uint3
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -2858,7 +3327,7 @@ __STATIC_INLINE void LL_ADC_SetOffset(ADC_TypeDef *ADCx, uint32_t Offsety, uint3
   */
 __STATIC_INLINE uint32_t LL_ADC_GetOffsetChannel(ADC_TypeDef *ADCx, uint32_t Offsety)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
 
   return (uint32_t) READ_BIT(*preg, ADC_OFR1_OFFSET1_CH);
 }
@@ -2884,7 +3353,7 @@ __STATIC_INLINE uint32_t LL_ADC_GetOffsetChannel(ADC_TypeDef *ADCx, uint32_t Off
   */
 __STATIC_INLINE uint32_t LL_ADC_GetOffsetLevel(ADC_TypeDef *ADCx, uint32_t Offsety)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
 
   return (uint32_t) READ_BIT(*preg, ADC_OFR1_OFFSET1);
 }
@@ -2926,7 +3395,7 @@ __STATIC_INLINE void LL_ADC_SetDataRightShift(ADC_TypeDef *ADCx, uint32_t Offset
   */
 __STATIC_INLINE uint32_t LL_ADC_GetDataRightShift(ADC_TypeDef *ADCx, uint32_t Offsety)
 {
-  return (uint32_t) ((READ_BIT(ADCx->CFGR2, (ADC_CFGR2_RSHIFT1 << (Offsety & 0x1FUL)))) >> (Offsety & 0x1FUL));
+  return (uint32_t)((READ_BIT(ADCx->CFGR2, (ADC_CFGR2_RSHIFT1 << (Offsety & 0x1FUL)))) >> (Offsety & 0x1FUL));
 }
 
 /**
@@ -2949,8 +3418,17 @@ __STATIC_INLINE uint32_t LL_ADC_GetDataRightShift(ADC_TypeDef *ADCx, uint32_t Of
   */
 __STATIC_INLINE void LL_ADC_SetOffsetSignedSaturation(ADC_TypeDef *ADCx, uint32_t Offsety, uint32_t OffsetSignedSaturation)
 {
-   register __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
-   MODIFY_REG(*preg, ADC_OFR1_SSATE, OffsetSignedSaturation);
+#if defined(ADC_VER_V5_V90)
+  if (ADCx == ADC3)
+  {
+    /* Function not available on this instance */
+  }
+  else
+#endif  /* ADC_VER_V5_V90 */
+  {
+    __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+    MODIFY_REG(*preg, ADC_OFR1_SSATE, OffsetSignedSaturation);
+  }
 }
 
 /**
@@ -2972,9 +3450,224 @@ __STATIC_INLINE void LL_ADC_SetOffsetSignedSaturation(ADC_TypeDef *ADCx, uint32_
   */
 __STATIC_INLINE uint32_t LL_ADC_GetOffsetSignedSaturation(ADC_TypeDef *ADCx, uint32_t Offsety)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
-  return (uint32_t) READ_BIT(*preg, ADC_OFR1_SSATE);
+#if defined(ADC_VER_V5_V90)
+  if (ADCx == ADC3)
+  {
+    /* Function not available on this instance */
+    return 0UL;
+  }
+  else
+#endif  /* ADC_VER_V5_V90 */
+  {
+    const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+    return (uint32_t) READ_BIT(*preg, ADC_OFR1_SSATE);
+  }
 }
+
+#if defined(ADC_VER_V5_V90)
+/**
+  * @brief  Set for the ADC selected offset number 1, 2, 3 or 4:
+  *         choose offset saturation mode.
+  * @note   On this STM32 serie, setting of this feature is conditioned to
+  *         ADC state:
+  *         ADC must be disabled or enabled without conversion on going
+  *         on either groups regular or injected.
+  * @rmtoll OFR1     SATEN          LL_ADC_SetOffsetSaturation\n
+  *         OFR2     SATEN          LL_ADC_SetOffsetSaturation\n
+  *         OFR3     SATEN          LL_ADC_SetOffsetSaturation\n
+  *         OFR4     SATEN          LL_ADC_SetOffsetSaturation
+  * @param  ADCx ADC instance
+  * @param  Offsety This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_1
+  *         @arg @ref LL_ADC_OFFSET_2
+  *         @arg @ref LL_ADC_OFFSET_3
+  *         @arg @ref LL_ADC_OFFSET_4
+  * @param  OffsetSaturation This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_SATURATION_ENABLE
+  *         @arg @ref LL_ADC_OFFSET_SATURATION_DISABLE
+  * @retval None
+  */
+__STATIC_INLINE void LL_ADC_SetOffsetSaturation(ADC_TypeDef *ADCx, uint32_t Offsety, uint32_t OffsetSaturation)
+{
+  if (ADCx == ADC3)
+  {
+    __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+
+    MODIFY_REG(*preg,
+               ADC3_OFR1_SATEN,
+               OffsetSaturation);
+  }
+}
+
+/**
+  * @brief  Get for the ADC selected offset number 1, 2, 3 or 4:
+  *         offset saturation if enabled or disabled.
+  * @rmtoll OFR1     SATEN          LL_ADC_GetOffsetSaturation\n
+  *         OFR2     SATEN          LL_ADC_GetOffsetSaturation\n
+  *         OFR3     SATEN          LL_ADC_GetOffsetSaturation\n
+  *         OFR4     SATEN          LL_ADC_GetOffsetSaturation
+  * @param  ADCx ADC instance
+  * @param  Offsety This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_1
+  *         @arg @ref LL_ADC_OFFSET_2
+  *         @arg @ref LL_ADC_OFFSET_3
+  *         @arg @ref LL_ADC_OFFSET_4
+  * @retval Returned value can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_SATURATION_ENABLE
+  *         @arg @ref LL_ADC_OFFSET_SATURATION_DISABLE
+  */
+__STATIC_INLINE uint32_t LL_ADC_GetOffsetSaturation(ADC_TypeDef *ADCx, uint32_t Offsety)
+{
+  if (ADCx == ADC3)
+  {
+    const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+
+    return (uint32_t) READ_BIT(*preg, ADC3_OFR1_SATEN);
+  }else
+  {
+    return 0UL;
+  }
+}
+
+/**
+  * @brief  Set for the ADC selected offset number 1, 2, 3 or 4:
+  *         choose offset sign.
+  * @note   On this STM32 serie, setting of this feature is conditioned to
+  *         ADC state:
+  *         ADC must be disabled or enabled without conversion on going
+  *         on either groups regular or injected.
+  * @rmtoll OFR1     OFFSETPOS      LL_ADC_SetOffsetSign\n
+  *         OFR2     OFFSETPOS      LL_ADC_SetOffsetSign\n
+  *         OFR3     OFFSETPOS      LL_ADC_SetOffsetSign\n
+  *         OFR4     OFFSETPOS      LL_ADC_SetOffsetSign
+  * @param  ADCx ADC instance
+  * @param  Offsety This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_1
+  *         @arg @ref LL_ADC_OFFSET_2
+  *         @arg @ref LL_ADC_OFFSET_3
+  *         @arg @ref LL_ADC_OFFSET_4
+  * @param  OffsetSign This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_SIGN_NEGATIVE
+  *         @arg @ref LL_ADC_OFFSET_SIGN_POSITIVE
+  * @retval None
+  */
+__STATIC_INLINE void LL_ADC_SetOffsetSign(ADC_TypeDef *ADCx, uint32_t Offsety, uint32_t OffsetSign)
+{
+  if (ADCx == ADC3)
+  {
+    __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+
+    MODIFY_REG(*preg,
+               ADC3_OFR1_OFFSETPOS,
+               OffsetSign);
+  }
+}
+
+/**
+  * @brief  Get for the ADC selected offset number 1, 2, 3 or 4:
+  *         offset sign if positive or negative.
+  * @rmtoll OFR1     OFFSETPOS      LL_ADC_GetOffsetSign\n
+  *         OFR2     OFFSETPOS      LL_ADC_GetOffsetSign\n
+  *         OFR3     OFFSETPOS      LL_ADC_GetOffsetSign\n
+  *         OFR4     OFFSETPOS      LL_ADC_GetOffsetSign
+  * @param  ADCx ADC instance
+  * @param  Offsety This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_1
+  *         @arg @ref LL_ADC_OFFSET_2
+  *         @arg @ref LL_ADC_OFFSET_3
+  *         @arg @ref LL_ADC_OFFSET_4
+  * @retval Returned value can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_SIGN_NEGATIVE
+  *         @arg @ref LL_ADC_OFFSET_SIGN_POSITIVE
+  */
+__STATIC_INLINE uint32_t LL_ADC_GetOffsetSign(ADC_TypeDef *ADCx, uint32_t Offsety)
+{
+  if (ADCx == ADC3)
+  {
+    const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+
+    return (uint32_t) READ_BIT(*preg, ADC3_OFR1_OFFSETPOS);
+  }
+  else
+  { 
+    return 0UL;
+  }
+}
+
+/**
+  * @brief  Set for the ADC selected offset number 1, 2, 3 or 4:
+  *         force offset state disable or enable
+  *         without modifying offset channel or offset value.
+  * @note   This function should be needed only in case of offset to be
+  *         enabled-disabled dynamically, and should not be needed in other cases:
+  *         function LL_ADC_SetOffset() automatically enables the offset.
+  * @note   On this STM32 serie, setting of this feature is conditioned to
+  *         ADC state:
+  *         ADC must be disabled or enabled without conversion on going
+  *         on either groups regular or injected.
+  * @rmtoll OFR1     OFFSET1_EN     LL_ADC_SetOffsetState\n
+  *         OFR2     OFFSET2_EN     LL_ADC_SetOffsetState\n
+  *         OFR3     OFFSET3_EN     LL_ADC_SetOffsetState\n
+  *         OFR4     OFFSET4_EN     LL_ADC_SetOffsetState
+  * @param  ADCx ADC instance
+  * @param  Offsety This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_1
+  *         @arg @ref LL_ADC_OFFSET_2
+  *         @arg @ref LL_ADC_OFFSET_3
+  *         @arg @ref LL_ADC_OFFSET_4
+  * @param  OffsetState This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_DISABLE
+  *         @arg @ref LL_ADC_OFFSET_ENABLE
+  * @retval None
+  */
+__STATIC_INLINE void LL_ADC_SetOffsetState(ADC_TypeDef *ADCx, uint32_t Offsety, uint32_t OffsetState)
+{
+  __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+  if (ADCx == ADC3)
+  {
+    MODIFY_REG(*preg,
+               ADC3_OFR1_OFFSET1_EN,
+               OffsetState);
+  }
+  else
+  {
+    MODIFY_REG(*preg,
+               ADC_OFR1_SSATE,
+               OffsetState);
+  }
+}
+
+/**
+  * @brief  Get for the ADC selected offset number 1, 2, 3 or 4:
+  *         offset state disabled or enabled.
+  * @rmtoll OFR1     OFFSET1_EN     LL_ADC_GetOffsetState\n
+  *         OFR2     OFFSET2_EN     LL_ADC_GetOffsetState\n
+  *         OFR3     OFFSET3_EN     LL_ADC_GetOffsetState\n
+  *         OFR4     OFFSET4_EN     LL_ADC_GetOffsetState
+  * @param  ADCx ADC instance
+  * @param  Offsety This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_1
+  *         @arg @ref LL_ADC_OFFSET_2
+  *         @arg @ref LL_ADC_OFFSET_3
+  *         @arg @ref LL_ADC_OFFSET_4
+  * @retval Returned value can be one of the following values:
+  *         @arg @ref LL_ADC_OFFSET_DISABLE
+  *         @arg @ref LL_ADC_OFFSET_ENABLE
+  */
+__STATIC_INLINE uint32_t LL_ADC_GetOffsetState(ADC_TypeDef *ADCx, uint32_t Offsety)
+{
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->OFR1, Offsety);
+  if (ADCx == ADC3)
+  {
+    return (uint32_t) READ_BIT(*preg, ADC3_OFR1_OFFSET1_EN);
+  }
+  else
+  {
+    return (uint32_t) READ_BIT(*preg, ADC_OFR1_SSATE);
+  }
+}
+
+#endif  /* ADC_VER_V5_V90 */
 
 /**
   * @}
@@ -3074,11 +3767,11 @@ __STATIC_INLINE void LL_ADC_REG_SetTriggerSource(ADC_TypeDef *ADCx, uint32_t Tri
   */
 __STATIC_INLINE uint32_t LL_ADC_REG_GetTriggerSource(ADC_TypeDef *ADCx)
 {
-  register __IO uint32_t TriggerSource = READ_BIT(ADCx->CFGR, ADC_CFGR_EXTSEL | ADC_CFGR_EXTEN);
+  __IO uint32_t TriggerSource = READ_BIT(ADCx->CFGR, ADC_CFGR_EXTSEL | ADC_CFGR_EXTEN);
 
   /* Value for shift of {0; 4; 8; 12} depending on value of bitfield          */
   /* corresponding to ADC_CFGR_EXTEN {0; 1; 2; 3}.                            */
-  register uint32_t ShiftExten = ((TriggerSource & ADC_CFGR_EXTEN) >> (ADC_REG_TRIG_EXTEN_BITOFFSET_POS - 2UL));
+  uint32_t ShiftExten = ((TriggerSource & ADC_CFGR_EXTEN) >> (ADC_REG_TRIG_EXTEN_BITOFFSET_POS - 2UL));
 
   /* Set bitfield corresponding to ADC_CFGR_EXTEN and ADC_CFGR_EXTSEL         */
   /* to match with triggers literals definition.                              */
@@ -3138,6 +3831,38 @@ __STATIC_INLINE uint32_t LL_ADC_REG_GetTriggerEdge(ADC_TypeDef *ADCx)
 {
   return (uint32_t)(READ_BIT(ADCx->CFGR, ADC_CFGR_EXTEN));
 }
+
+#if defined(ADC_VER_V5_V90)
+/**
+  * @brief  Set ADC sampling mode.
+  * @note   This function set the ADC conversion sampling mode
+  * @note   This mode applies to regular group only.
+  * @note   Set sampling mode is appied to all conversion of regular group.
+  * @note   On this STM32 serie, setting of this feature is conditioned to
+  *         ADC state:
+  *         ADC must be disabled or enabled without conversion on going
+  *         on group regular.
+  * @rmtoll CFGR2    BULB           LL_ADC_REG_SetSamplingMode\n
+  *         CFGR2    SMPTRIG        LL_ADC_REG_SetSamplingMode
+  * @param  ADCx ADC instance
+  * @param  SamplingMode This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_REG_SAMPLING_MODE_NORMAL
+  *         @arg @ref LL_ADC_REG_SAMPLING_MODE_BULB
+  *         @arg @ref LL_ADC_REG_SAMPLING_MODE_TRIGGER_CONTROLED
+  * @retval None
+  */
+__STATIC_INLINE void LL_ADC_REG_SetSamplingMode(ADC_TypeDef *ADCx, uint32_t SamplingMode)
+{
+  if (ADCx != ADC3)
+  {
+    /* Function not available on this instance */
+  }
+  else
+  {
+    MODIFY_REG(ADCx->CFGR2, ADC3_CFGR2_BULB | ADC3_CFGR2_SMPTRIG, SamplingMode);
+  }
+}
+#endif  /* ADC_VER_V5_V90 */
 
 /**
   * @brief  Set ADC group regular sequencer length and scan direction.
@@ -3387,7 +4112,7 @@ __STATIC_INLINE uint32_t LL_ADC_REG_GetSequencerDiscont(ADC_TypeDef *ADCx)
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -3400,7 +4125,7 @@ __STATIC_INLINE void LL_ADC_REG_SetSequencerRanks(ADC_TypeDef *ADCx, uint32_t Ra
   /* in register and register position depending on parameter "Rank".         */
   /* Parameters "Rank" and "Channel" are used with masks because containing   */
   /* other bits reserved for other purpose.                                   */
-  register __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->SQR1, ((Rank & ADC_REG_SQRX_REGOFFSET_MASK) >> ADC_SQRX_REGOFFSET_POS));
+  __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->SQR1, ((Rank & ADC_REG_SQRX_REGOFFSET_MASK) >> ADC_SQRX_REGOFFSET_POS));
 
   MODIFY_REG(*preg,
              ADC_CHANNEL_ID_NUMBER_MASK_POSBIT0 << (Rank & ADC_REG_RANK_ID_SQRX_MASK),
@@ -3487,7 +4212,7 @@ __STATIC_INLINE void LL_ADC_REG_SetSequencerRanks(ADC_TypeDef *ADCx, uint32_t Ra
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -3498,12 +4223,12 @@ __STATIC_INLINE void LL_ADC_REG_SetSequencerRanks(ADC_TypeDef *ADCx, uint32_t Ra
   */
 __STATIC_INLINE uint32_t LL_ADC_REG_GetSequencerRanks(ADC_TypeDef *ADCx, uint32_t Rank)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->SQR1, ((Rank & ADC_REG_SQRX_REGOFFSET_MASK) >> ADC_SQRX_REGOFFSET_POS));
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->SQR1, ((Rank & ADC_REG_SQRX_REGOFFSET_MASK) >> ADC_SQRX_REGOFFSET_POS));
 
-  return (uint32_t) ((READ_BIT(*preg,
+  return (uint32_t)((READ_BIT(*preg,
                               ADC_CHANNEL_ID_NUMBER_MASK_POSBIT0 << (Rank & ADC_REG_RANK_ID_SQRX_MASK))
                      >> (Rank & ADC_REG_RANK_ID_SQRX_MASK)) << ADC_CHANNEL_ID_NUMBER_BITOFFSET_POS
-                    );
+                   );
 }
 
 /**
@@ -3563,6 +4288,113 @@ __STATIC_INLINE void LL_ADC_REG_SetDataTransferMode(ADC_TypeDef *ADCx, uint32_t 
   MODIFY_REG(ADCx->CFGR, ADC_CFGR_DMNGT, DataTransferMode);
 }
 
+#if defined(ADC_VER_V5_V90)
+/**
+  * @brief  Enable DMA requests for ADC3.
+  * @rmtoll CFGR     DMAEN          LL_ADC_REG_SetDMATransfer\n
+  * @param  ADCx ADC instance
+  * @retval None
+  */
+__STATIC_INLINE void LL_ADC_EnableDMAReq (ADC_TypeDef *ADCx)
+{
+  SET_BIT(ADCx->CFGR, ADC3_CFGR_DMAEN);
+}
+
+__STATIC_INLINE void LL_ADC_DisableDMAReq(ADC_TypeDef *ADCx)
+{
+  CLEAR_BIT (ADCx->CFGR, ADC3_CFGR_DMAEN);
+}
+
+__STATIC_INLINE uint32_t LL_ADC_IsEnabledDMAReq (ADC_TypeDef *ADCx)
+{
+  return ((READ_BIT(ADCx->CFGR, ADC3_CFGR_DMAEN) == (ADC3_CFGR_DMAEN)) ? 1UL : 0UL);
+}
+/**
+  * @brief  Set ADC group regular conversion data transfer: no transfer or
+  *         transfer by DMA, and DMA requests mode.
+  * @note   If transfer by DMA selected, specifies the DMA requests
+  *         mode:
+  *         - Limited mode (One shot mode): DMA transfer requests are stopped
+  *           when number of DMA data transfers (number of
+  *           ADC conversions) is reached.
+  *           This ADC mode is intended to be used with DMA mode non-circular.
+  *         - Unlimited mode: DMA transfer requests are unlimited,
+  *           whatever number of DMA data transfers (number of
+  *           ADC conversions).
+  *           This ADC mode is intended to be used with DMA mode circular.
+  * @note   If ADC DMA requests mode is set to unlimited and DMA is set to
+  *         mode non-circular:
+  *         when DMA transfers size will be reached, DMA will stop transfers of
+  *         ADC conversions data ADC will raise an overrun error
+  *        (overrun flag and interruption if enabled).
+  * @note   For devices with several ADC instances: ADC multimode DMA
+  *         settings are available using function @ref LL_ADC_SetMultiDMATransfer().
+  * @note   To configure DMA source address (peripheral address),
+  *         use function @ref LL_ADC_DMA_GetRegAddr().
+  * @note   On this STM32 serie, setting of this feature is conditioned to
+  *         ADC state:
+  *         ADC must be disabled or enabled without conversion on going
+  *         on either groups regular or injected.
+  * @rmtoll CFGR     DMAEN          LL_ADC_REG_SetDMATransferMode\n
+  *         CFGR     DMACFG         LL_ADC_REG_SetDMATransferMode
+  * @param  ADCx ADC instance
+  * @param  DMATransfer This parameter can be one of the following values:
+  *         @arg @ref LL_ADC3_REG_DMA_TRANSFER_NONE
+  *         @arg @ref LL_ADC3_REG_DMA_TRANSFER_LIMITED
+  *         @arg @ref LL_ADC3_REG_DMA_TRANSFER_UNLIMITED
+  * @retval None
+  */
+__STATIC_INLINE void LL_ADC_REG_SetDMATransferMode(ADC_TypeDef *ADCx, uint32_t DMATransfer)
+{
+  if (ADCx == ADC3)
+  {
+    MODIFY_REG(ADCx->CFGR, ADC3_CFGR_DMAEN | ADC3_CFGR_DMACFG, DMATransfer);
+  }
+}
+
+/**
+  * @brief  Get ADC group regular conversion data transfer: no transfer or
+  *         transfer by DMA, and DMA requests mode.
+  * @note   If transfer by DMA selected, specifies the DMA requests
+  *         mode:
+  *         - Limited mode (One shot mode): DMA transfer requests are stopped
+  *           when number of DMA data transfers (number of
+  *           ADC conversions) is reached.
+  *           This ADC mode is intended to be used with DMA mode non-circular.
+  *         - Unlimited mode: DMA transfer requests are unlimited,
+  *           whatever number of DMA data transfers (number of
+  *           ADC conversions).
+  *           This ADC mode is intended to be used with DMA mode circular.
+  * @note   If ADC DMA requests mode is set to unlimited and DMA is set to
+  *         mode non-circular:
+  *         when DMA transfers size will be reached, DMA will stop transfers of
+  *         ADC conversions data ADC will raise an overrun error
+  *         (overrun flag and interruption if enabled).
+  * @note   For devices with several ADC instances: ADC multimode DMA
+  *         settings are available using function @ref LL_ADC_GetMultiDMATransfer().
+  * @note   To configure DMA source address (peripheral address),
+  *         use function @ref LL_ADC_DMA_GetRegAddr().
+  * @rmtoll CFGR     DMAEN          LL_ADC_REG_GetDMATransfer\n
+  *         CFGR     DMACFG         LL_ADC_REG_GetDMATransfer
+  * @param  ADCx ADC instance
+  * @retval Returned value can be one of the following values:
+  *         @arg @ref LL_ADC3_REG_DMA_TRANSFER_NONE
+  *         @arg @ref LL_ADC3_REG_DMA_TRANSFER_LIMITED
+  *         @arg @ref LL_ADC3_REG_DMA_TRANSFER_UNLIMITED
+  */
+__STATIC_INLINE uint32_t LL_ADC_REG_GetDMATransferMode(ADC_TypeDef *ADCx)
+{
+  if (ADCx == ADC3)
+  {
+    return (uint32_t)(READ_BIT(ADCx->CFGR, ADC3_CFGR_DMAEN | ADC3_CFGR_DMACFG));
+  }
+   else
+  { 
+    return 0UL;
+  }
+}
+
+#endif  /* ADC_VER_V5_V90 */
 
 /**
   * @brief  Get ADC data transfer mode
@@ -3722,11 +4554,11 @@ __STATIC_INLINE void LL_ADC_INJ_SetTriggerSource(ADC_TypeDef *ADCx, uint32_t Tri
   */
 __STATIC_INLINE uint32_t LL_ADC_INJ_GetTriggerSource(ADC_TypeDef *ADCx)
 {
-  register __IO uint32_t TriggerSource = READ_BIT(ADCx->JSQR, ADC_JSQR_JEXTSEL | ADC_JSQR_JEXTEN);
+  __IO uint32_t TriggerSource = READ_BIT(ADCx->JSQR, ADC_JSQR_JEXTSEL | ADC_JSQR_JEXTEN);
 
   /* Value for shift of {0; 4; 8; 12} depending on value of bitfield          */
   /* corresponding to ADC_JSQR_JEXTEN {0; 1; 2; 3}.                           */
-  register uint32_t ShiftJexten = ((TriggerSource & ADC_JSQR_JEXTEN) >> (ADC_INJ_TRIG_EXTEN_BITOFFSET_POS - 2UL));
+  uint32_t ShiftJexten = ((TriggerSource & ADC_JSQR_JEXTEN) >> (ADC_INJ_TRIG_EXTEN_BITOFFSET_POS - 2UL));
 
   /* Set bitfield corresponding to ADC_JSQR_JEXTEN and ADC_JSQR_JEXTSEL       */
   /* to match with triggers literals definition.                              */
@@ -3918,7 +4750,7 @@ __STATIC_INLINE uint32_t LL_ADC_INJ_GetSequencerDiscont(ADC_TypeDef *ADCx)
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -3988,7 +4820,7 @@ __STATIC_INLINE void LL_ADC_INJ_SetSequencerRanks(ADC_TypeDef *ADCx, uint32_t Ra
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -4211,7 +5043,7 @@ __STATIC_INLINE uint32_t LL_ADC_INJ_GetQueueMode(ADC_TypeDef *ADCx)
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -4242,7 +5074,7 @@ __STATIC_INLINE uint32_t LL_ADC_INJ_GetQueueMode(ADC_TypeDef *ADCx)
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -4273,7 +5105,7 @@ __STATIC_INLINE uint32_t LL_ADC_INJ_GetQueueMode(ADC_TypeDef *ADCx)
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -4304,7 +5136,7 @@ __STATIC_INLINE uint32_t LL_ADC_INJ_GetQueueMode(ADC_TypeDef *ADCx)
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -4326,16 +5158,16 @@ __STATIC_INLINE void LL_ADC_INJ_ConfigQueueContext(ADC_TypeDef *ADCx,
   /* because containing other bits reserved for other purpose.                */
   /* If parameter "TriggerSource" is set to SW start, then parameter          */
   /* "ExternalTriggerEdge" is discarded.                                      */
-  register uint32_t is_trigger_not_sw = (uint32_t)((TriggerSource != LL_ADC_INJ_TRIG_SOFTWARE) ? 1UL : 0UL);
-  MODIFY_REG(ADCx->JSQR           ,
+  uint32_t is_trigger_not_sw = (uint32_t)((TriggerSource != LL_ADC_INJ_TRIG_SOFTWARE) ? 1UL : 0UL);
+  MODIFY_REG(ADCx->JSQR,
              ADC_JSQR_JEXTSEL |
              ADC_JSQR_JEXTEN  |
              ADC_JSQR_JSQ4    |
              ADC_JSQR_JSQ3    |
              ADC_JSQR_JSQ2    |
              ADC_JSQR_JSQ1    |
-             ADC_JSQR_JL          ,
-             TriggerSource       |
+             ADC_JSQR_JL,
+             (TriggerSource & ADC_JSQR_JEXTSEL)        |
              (ExternalTriggerEdge * (is_trigger_not_sw)) |
              (((Rank4_Channel & ADC_CHANNEL_ID_NUMBER_MASK) >> ADC_CHANNEL_ID_NUMBER_BITOFFSET_POS) << (LL_ADC_INJ_RANK_4 & ADC_INJ_RANK_ID_JSQR_MASK)) |
              (((Rank3_Channel & ADC_CHANNEL_ID_NUMBER_MASK) >> ADC_CHANNEL_ID_NUMBER_BITOFFSET_POS) << (LL_ADC_INJ_RANK_3 & ADC_INJ_RANK_ID_JSQR_MASK)) |
@@ -4425,7 +5257,7 @@ __STATIC_INLINE void LL_ADC_INJ_ConfigQueueContext(ADC_TypeDef *ADCx,
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -4447,7 +5279,7 @@ __STATIC_INLINE void LL_ADC_SetChannelSamplingTime(ADC_TypeDef *ADCx, uint32_t C
   /* in register and register position depending on parameter "Channel".      */
   /* Parameter "Channel" is used with masks because containing                */
   /* other bits reserved for other purpose.                                   */
-  register __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->SMPR1, ((Channel & ADC_CHANNEL_SMPRX_REGOFFSET_MASK) >> ADC_SMPRX_REGOFFSET_POS));
+  __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->SMPR1, ((Channel & ADC_CHANNEL_SMPRX_REGOFFSET_MASK) >> ADC_SMPRX_REGOFFSET_POS));
 
   MODIFY_REG(*preg,
              ADC_SMPR1_SMP0 << ((Channel & ADC_CHANNEL_SMPx_BITOFFSET_MASK) >> ADC_CHANNEL_SMPx_BITOFFSET_POS),
@@ -4511,7 +5343,7 @@ __STATIC_INLINE void LL_ADC_SetChannelSamplingTime(ADC_TypeDef *ADCx, uint32_t C
   *         @arg @ref LL_ADC_CHANNEL_VBAT         (1)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH1_ADC2 (2)
   *         @arg @ref LL_ADC_CHANNEL_DAC1CH2_ADC2 (2)
-  *         
+  *
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.\n
   *         (3) On STM32H7, fast channel (0.125 us for 14-bit resolution (ADC conversion rate up to 8 Ms/s)).
@@ -4528,7 +5360,7 @@ __STATIC_INLINE void LL_ADC_SetChannelSamplingTime(ADC_TypeDef *ADCx, uint32_t C
   */
 __STATIC_INLINE uint32_t LL_ADC_GetChannelSamplingTime(ADC_TypeDef *ADCx, uint32_t Channel)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->SMPR1, ((Channel & ADC_CHANNEL_SMPRX_REGOFFSET_MASK) >> ADC_SMPRX_REGOFFSET_POS));
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->SMPR1, ((Channel & ADC_CHANNEL_SMPRX_REGOFFSET_MASK) >> ADC_SMPRX_REGOFFSET_POS));
 
   return (uint32_t)(READ_BIT(*preg,
                              ADC_SMPR1_SMP0 << ((Channel & ADC_CHANNEL_SMPx_BITOFFSET_MASK) >> ADC_CHANNEL_SMPx_BITOFFSET_POS))
@@ -4589,12 +5421,30 @@ __STATIC_INLINE uint32_t LL_ADC_GetChannelSamplingTime(ADC_TypeDef *ADCx, uint32
   */
 __STATIC_INLINE void LL_ADC_SetChannelSingleDiff(ADC_TypeDef *ADCx, uint32_t Channel, uint32_t SingleDiff)
 {
+#if defined(ADC_VER_V5_V90)
+  /* Bits of channels in single or differential mode are set only for         */
+  /* differential mode (for single mode, mask of bits allowed to be set is    */
+  /* shifted out of range of bits of channels in single or differential mode. */
+  if (ADCx == ADC3)
+  {
+    MODIFY_REG(ADCx->LTR2_DIFSEL,
+               Channel & ADC_SINGLEDIFF_CHANNEL_MASK,
+               (Channel & ADC_SINGLEDIFF_CHANNEL_MASK) & (ADC_DIFSEL_DIFSEL >> (SingleDiff & ADC_SINGLEDIFF_CHANNEL_SHIFT_MASK)));
+  }
+  else
+  {
+    MODIFY_REG(ADCx->DIFSEL_RES12,
+               Channel & ADC_SINGLEDIFF_CHANNEL_MASK,
+               (Channel & ADC_SINGLEDIFF_CHANNEL_MASK) & (ADC_DIFSEL_DIFSEL >> (SingleDiff & ADC_SINGLEDIFF_CHANNEL_SHIFT_MASK)));
+  }
+#else  /* ADC_VER_V5_V90 */
   /* Bits of channels in single or differential mode are set only for         */
   /* differential mode (for single mode, mask of bits allowed to be set is    */
   /* shifted out of range of bits of channels in single or differential mode. */
   MODIFY_REG(ADCx->DIFSEL,
              Channel & ADC_SINGLEDIFF_CHANNEL_MASK,
              (Channel & ADC_SINGLEDIFF_CHANNEL_MASK) & (ADC_DIFSEL_DIFSEL >> (SingleDiff & ADC_SINGLEDIFF_CHANNEL_SHIFT_MASK)));
+#endif
 }
 
 /**
@@ -4642,7 +5492,11 @@ __STATIC_INLINE void LL_ADC_SetChannelSingleDiff(ADC_TypeDef *ADCx, uint32_t Cha
   */
 __STATIC_INLINE uint32_t LL_ADC_GetChannelSingleDiff(ADC_TypeDef *ADCx, uint32_t Channel)
 {
+#if defined(ADC_VER_V5_V90)  
+  return (uint32_t)(READ_BIT(ADCx->DIFSEL_RES12, (Channel & ADC_SINGLEDIFF_CHANNEL_MASK)));
+#else  
   return (uint32_t)(READ_BIT(ADCx->DIFSEL, (Channel & ADC_SINGLEDIFF_CHANNEL_MASK)));
+#endif
 }
 
 /**
@@ -4778,7 +5632,7 @@ __STATIC_INLINE uint32_t LL_ADC_GetChannelSingleDiff(ADC_TypeDef *ADCx, uint32_t
   *         @arg @ref LL_ADC_AWD_CH_DAC1CH2_ADC2_REG     (0)(2)
   *         @arg @ref LL_ADC_AWD_CH_DAC1CH2_ADC2_INJ     (0)(2)
   *         @arg @ref LL_ADC_AWD_CH_DAC1CH2_ADC2_REG_INJ    (2)
-  *         
+  *
   *         (0) On STM32H7, parameter available only on analog watchdog number: AWD1.\n
   *         (1) On STM32H7, parameter available only on ADC instance: ADC3.\n
   *         (2) On STM32H7, parameter available only on ADC instance: ADC2.
@@ -4790,8 +5644,8 @@ __STATIC_INLINE void LL_ADC_SetAnalogWDMonitChannels(ADC_TypeDef *ADCx, uint32_t
   /* in register and register position depending on parameter "AWDy".         */
   /* Parameters "AWDChannelGroup" and "AWDy" are used with masks because      */
   /* containing other bits reserved for other purpose.                        */
-  register __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->CFGR, ((AWDy & ADC_AWD_CRX_REGOFFSET_MASK) >> ADC_AWD_CRX_REGOFFSET_POS)
-                                                             + ((AWDy & ADC_AWD_CR12_REGOFFSETGAP_MASK) * ADC_AWD_CR12_REGOFFSETGAP_VAL));
+  __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->CFGR, ((AWDy & ADC_AWD_CRX_REGOFFSET_MASK) >> ADC_AWD_CRX_REGOFFSET_POS)
+                                                      + ((AWDy & ADC_AWD_CR12_REGOFFSETGAP_MASK) * ADC_AWD_CR12_REGOFFSETGAP_VAL));
 
   MODIFY_REG(*preg,
              (AWDy & ADC_AWD_CR_ALL_CHANNEL_MASK),
@@ -4920,28 +5774,28 @@ __STATIC_INLINE void LL_ADC_SetAnalogWDMonitChannels(ADC_TypeDef *ADCx, uint32_t
   *         @arg @ref LL_ADC_AWD_CHANNEL_19_REG          (0)
   *         @arg @ref LL_ADC_AWD_CHANNEL_19_INJ          (0)
   *         @arg @ref LL_ADC_AWD_CHANNEL_19_REG_INJ
-  *         
+  *
   *         (0) On STM32H7, parameter available only on analog watchdog number: AWD1.
   */
 __STATIC_INLINE uint32_t LL_ADC_GetAnalogWDMonitChannels(ADC_TypeDef *ADCx, uint32_t AWDy)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->CFGR, ((AWDy & ADC_AWD_CRX_REGOFFSET_MASK) >> ADC_AWD_CRX_REGOFFSET_POS)
-                                                             + ((AWDy & ADC_AWD_CR12_REGOFFSETGAP_MASK) * ADC_AWD_CR12_REGOFFSETGAP_VAL));
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->CFGR, ((AWDy & ADC_AWD_CRX_REGOFFSET_MASK) >> ADC_AWD_CRX_REGOFFSET_POS)
+                                                            + ((AWDy & ADC_AWD_CR12_REGOFFSETGAP_MASK) * ADC_AWD_CR12_REGOFFSETGAP_VAL));
 
-  register uint32_t AnalogWDMonitChannels = (READ_BIT(*preg, AWDy) & AWDy & ADC_AWD_CR_ALL_CHANNEL_MASK);
+  uint32_t AnalogWDMonitChannels = (READ_BIT(*preg, AWDy) & AWDy & ADC_AWD_CR_ALL_CHANNEL_MASK);
 
   /* If "AnalogWDMonitChannels" == 0, then the selected AWD is disabled       */
   /* (parameter value LL_ADC_AWD_DISABLE).                                    */
   /* Else, the selected AWD is enabled and is monitoring a group of channels  */
   /* or a single channel.                                                     */
-  if(AnalogWDMonitChannels != 0UL)
+  if (AnalogWDMonitChannels != 0UL)
   {
-    if(AWDy == LL_ADC_AWD1)
+    if (AWDy == LL_ADC_AWD1)
     {
-      if((AnalogWDMonitChannels & ADC_CFGR_AWD1SGL) == 0UL)
+      if ((AnalogWDMonitChannels & ADC_CFGR_AWD1SGL) == 0UL)
       {
         /* AWD monitoring a group of channels */
-        AnalogWDMonitChannels = ((  AnalogWDMonitChannels
+        AnalogWDMonitChannels = ((AnalogWDMonitChannels
                                   | (ADC_AWD_CR23_CHANNEL_MASK)
                                  )
                                  & (~(ADC_CFGR_AWD1CH))
@@ -4957,10 +5811,10 @@ __STATIC_INLINE uint32_t LL_ADC_GetAnalogWDMonitChannels(ADC_TypeDef *ADCx, uint
     }
     else
     {
-      if((AnalogWDMonitChannels & ADC_AWD_CR23_CHANNEL_MASK) == ADC_AWD_CR23_CHANNEL_MASK)
+      if ((AnalogWDMonitChannels & ADC_AWD_CR23_CHANNEL_MASK) == ADC_AWD_CR23_CHANNEL_MASK)
       {
         /* AWD monitoring a group of channels */
-        AnalogWDMonitChannels = (  ADC_AWD_CR23_CHANNEL_MASK
+        AnalogWDMonitChannels = (ADC_AWD_CR23_CHANNEL_MASK
                                  | ((ADC_CFGR_JAWD1EN | ADC_CFGR_AWD1EN))
                                 );
       }
@@ -4968,7 +5822,7 @@ __STATIC_INLINE uint32_t LL_ADC_GetAnalogWDMonitChannels(ADC_TypeDef *ADCx, uint
       {
         /* AWD monitoring a single channel */
         /* AWD monitoring a group of channels */
-        AnalogWDMonitChannels = (  AnalogWDMonitChannels
+        AnalogWDMonitChannels = (AnalogWDMonitChannels
                                  | (ADC_CFGR_JAWD1EN | ADC_CFGR_AWD1EN | ADC_CFGR_AWD1SGL)
                                  | (__LL_ADC_CHANNEL_TO_DECIMAL_NB(AnalogWDMonitChannels) << ADC_CFGR_AWD1CH_Pos)
                                 );
@@ -5034,16 +5888,45 @@ __STATIC_INLINE uint32_t LL_ADC_GetAnalogWDMonitChannels(ADC_TypeDef *ADCx, uint
   */
 __STATIC_INLINE void LL_ADC_SetAnalogWDThresholds(ADC_TypeDef *ADCx, uint32_t AWDy, uint32_t AWDThresholdsHighLow, uint32_t AWDThresholdValue)
 {
+#if defined(ADC_VER_V5_V90)
+  if (ADCx == ADC3)
+  {
+    /* Set bits with content of parameter "AWDThresholdValue" with bits         */
+    /* position in register and register position depending on parameters       */
+    /* "AWDThresholdsHighLow" and "AWDy".                                       */
+    /* Parameters "AWDy" and "AWDThresholdValue" are used with masks because    */
+    /* containing other bits reserved for other purpose.                        */
+    __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->LTR1_TR1, ((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS));
+
+    MODIFY_REG(*preg,
+               AWDThresholdsHighLow,
+               AWDThresholdValue << ((AWDThresholdsHighLow & ADC_AWD_TRX_BIT_HIGH_MASK) >> ADC_AWD_TRX_BIT_HIGH_SHIFT4));
+  }
+  else
+  {
+    /* Set bits with content of parameter "AWDThresholdValue" with bits         */
+    /* position in register and register position depending on parameters       */
+    /* "AWDThresholdsHighLow" and "AWDy".                                       */
+    /* Parameters "AWDy" and "AWDThresholdValue" are used with masks because    */
+    /* containing other bits reserved for other purpose.                        */
+    __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->LTR1_TR1, (((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS) * 2UL)
+                                                        + ((AWDy & ADC_AWD_TR12_REGOFFSETGAP_MASK) * ADC_AWD_TR12_REGOFFSETGAP_VAL)
+                                                        + (AWDThresholdsHighLow));
+
+    MODIFY_REG(*preg, ADC_LTR_LT, AWDThresholdValue);
+  }
+#else
   /* Set bits with content of parameter "AWDThresholdValue" with bits         */
   /* position in register and register position depending on parameters       */
   /* "AWDThresholdsHighLow" and "AWDy".                                       */
   /* Parameters "AWDy" and "AWDThresholdValue" are used with masks because    */
   /* containing other bits reserved for other purpose.                        */
-  register __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->LTR1, (((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS) * 2UL)
-                                                             + ((AWDy & ADC_AWD_TR12_REGOFFSETGAP_MASK) * ADC_AWD_TR12_REGOFFSETGAP_VAL)
-                                                             + (AWDThresholdsHighLow));
+  __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->LTR1, (((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS) * 2UL)
+                                                      + ((AWDy & ADC_AWD_TR12_REGOFFSETGAP_MASK) * ADC_AWD_TR12_REGOFFSETGAP_VAL)
+                                                      + (AWDThresholdsHighLow));
 
   MODIFY_REG(*preg, ADC_LTR_LT, AWDThresholdValue);
+#endif  /* ADC_VER_V5_V90 */
 }
 
 /**
@@ -5071,13 +5954,165 @@ __STATIC_INLINE void LL_ADC_SetAnalogWDThresholds(ADC_TypeDef *ADCx, uint32_t AW
 */
 __STATIC_INLINE uint32_t LL_ADC_GetAnalogWDThresholds(ADC_TypeDef *ADCx, uint32_t AWDy, uint32_t AWDThresholdsHighLow)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->LTR1, (((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS) * 2UL)
+#if defined(ADC_VER_V5_V90)
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->LTR1_TR1, (((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS) * 2UL)
+                                                            + ((AWDy & ADC_AWD_TR12_REGOFFSETGAP_MASK) * ADC_AWD_TR12_REGOFFSETGAP_VAL)
+                                                            + (AWDThresholdsHighLow));
+
+  return (uint32_t)(READ_BIT(*preg, ADC_LTR_LT));
+#else
+   const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->LTR1, (((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS) * 2UL)
                                                                    + ((AWDy & ADC_AWD_TR12_REGOFFSETGAP_MASK) * ADC_AWD_TR12_REGOFFSETGAP_VAL)
                                                                    + (AWDThresholdsHighLow));
 
   return (uint32_t)(READ_BIT(*preg, ADC_LTR_LT));
+#endif
 }
 
+#if defined(ADC_VER_V5_V90)
+
+/**
+  * @brief  Set ADC analog watchdog thresholds value of both thresholds
+  *         high and low. Applicable for devices STM32H72xx and STM32H73xx.
+  * @note   If value of only one threshold high or low must be set,
+  *         use function @ref LL_ADC_SetAnalogWDThresholds().
+  * @note   In case of ADC resolution different of 12 bits,
+  *         analog watchdog thresholds data require a specific shift.
+  *         Use helper macro @ref __LL_ADC_ANALOGWD_SET_THRESHOLD_RESOLUTION().
+  * @note   On this STM32 serie, there are 2 kinds of analog watchdog
+  *         instance:
+  *         - AWD standard (instance AWD1):
+  *           - channels monitored: can monitor 1 channel or all channels.
+  *           - groups monitored: ADC groups regular and-or injected.
+  *           - resolution: resolution is not limited (corresponds to
+  *             ADC resolution configured).
+  *         - AWD flexible (instances AWD2, AWD3):
+  *           - channels monitored: flexible on channels monitored, selection is
+  *             channel wise, from from 1 to all channels.
+  *             Specificity of this analog watchdog: Multiple channels can
+  *             be selected. For example:
+  *             (LL_ADC_AWD_CHANNEL4_REG_INJ | LL_ADC_AWD_CHANNEL5_REG_INJ | ...)
+  *           - groups monitored: not selection possible (monitoring on both
+  *             groups regular and injected).
+  *             Channels selected are monitored on groups regular and injected:
+  *             LL_ADC_AWD_CHANNELxx_REG_INJ (do not use parameters
+  *             LL_ADC_AWD_CHANNELxx_REG and LL_ADC_AWD_CHANNELxx_INJ)
+  *           - resolution: resolution is limited to 8 bits: if ADC resolution is
+  *             12 bits the 4 LSB are ignored, if ADC resolution is 10 bits
+  *             the 2 LSB are ignored.
+  * @rmtoll TR1      HT1            LL_ADC_ConfigAnalogWDThresholds\n
+  *         TR2      HT2            LL_ADC_ConfigAnalogWDThresholds\n
+  *         TR3      HT3            LL_ADC_ConfigAnalogWDThresholds\n
+  *         TR1      LT1            LL_ADC_ConfigAnalogWDThresholds\n
+  *         TR2      LT2            LL_ADC_ConfigAnalogWDThresholds\n
+  *         TR3      LT3            LL_ADC_ConfigAnalogWDThresholds
+  * @param  ADCx ADC instance
+  * @param  AWDy This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_AWD1
+  *         @arg @ref LL_ADC_AWD2
+  *         @arg @ref LL_ADC_AWD3
+  * @param  AWDThresholdHighValue Value between Min_Data=0x000 and Max_Data=0xFFF
+  * @param  AWDThresholdLowValue Value between Min_Data=0x000 and Max_Data=0xFFF
+  * @retval None
+  */
+__STATIC_INLINE void LL_ADC_ConfigAnalogWDThresholds(ADC_TypeDef *ADCx, uint32_t AWDy, uint32_t AWDThresholdHighValue, uint32_t AWDThresholdLowValue)
+{
+  /* Set bits with content of parameter "AWDThresholdxxxValue" with bits      */
+  /* position in register and register position depending on parameter        */
+  /* "AWDy".                                                                  */
+  /* Parameters "AWDy" and "AWDThresholdxxxValue" are used with masks because */
+  /* containing other bits reserved for other purpose.                        */
+  if (ADCx == ADC3)
+  {
+    uint32_t __IO *preg = __ADC_PTR_REG_OFFSET(ADCx->LTR1_TR1, ((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS));
+
+    MODIFY_REG(*preg,
+               ADC3_TR1_HT1 | ADC3_TR1_LT1,
+               (AWDThresholdHighValue << ADC3_TR1_HT1_Pos) | AWDThresholdLowValue);
+  }
+  else
+  {
+    __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->LTR1_TR1, (((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS) * 2UL)
+                                                        + ((AWDy & ADC_AWD_TR12_REGOFFSETGAP_MASK) * ADC_AWD_TR12_REGOFFSETGAP_VAL)
+                                                        + (LL_ADC_AWD_THRESHOLD_LOW));
+    __IO uint32_t *preg2 = __ADC_PTR_REG_OFFSET(ADCx->LTR1_TR1, (((AWDy & ADC_AWD_TRX_REGOFFSET_MASK) >> ADC_AWD_TRX_REGOFFSET_POS) * 2UL)
+                                                         + ((AWDy & ADC_AWD_TR12_REGOFFSETGAP_MASK) * ADC_AWD_TR12_REGOFFSETGAP_VAL)
+                                                         + (LL_ADC_AWD_THRESHOLD_HIGH));
+
+    MODIFY_REG(*preg, ADC_LTR_LT, AWDThresholdLowValue);
+    MODIFY_REG(*preg2, ADC_HTR_HT, AWDThresholdHighValue);
+  }
+}
+
+
+/**
+  * @brief  Set ADC analog watchdog filtering configuration
+  * @note   On this STM32 serie, setting of this feature is conditioned to
+  *         ADC state:
+  *         ADC must be disabled or enabled without conversion on going
+  *         on either groups regular or injected.
+  *         Applicable on ADC3 of devices STM32H72xx and STM32H73xx.
+  *  @note  On this STM32 serie, this feature is only available on first
+  *         analog watchdog (AWD1)
+  * @rmtoll TR1      AWDFILT        LL_ADC_SetAWDFilteringConfiguration
+  * @param  ADCx ADC instance
+  * @param  AWDy This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_AWD1
+  * @param  FilteringConfig This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_AWD_FILTERING_NONE
+  *         @arg @ref LL_ADC_AWD_FILTERING_2SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_3SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_4SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_5SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_6SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_7SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_8SAMPLES
+  * @retval None
+  */
+__STATIC_INLINE void LL_ADC_SetAWDFilteringConfiguration(ADC_TypeDef *ADCx, uint32_t AWDy, uint32_t FilteringConfig)
+{
+  if (ADCx == ADC3)
+  {
+    /* Prevent unused argument(s) compilation warning */
+    (void)(AWDy);
+    MODIFY_REG(ADCx->LTR1_TR1, ADC3_TR1_AWDFILT, FilteringConfig);
+  }
+}
+
+/**
+  * @brief  Get ADC analog watchdog filtering configuration
+  *  @note  On this STM32 serie, this feature is only available on first
+  *         analog watchdog (AWD1)
+  *         Applicable on ADC3 of devices STM32H72xx and STM32H73xx.
+  * @rmtoll TR1      AWDFILT        LL_ADC_GetAWDFilteringConfiguration
+  * @param  ADCx ADC instance
+  * @param  AWDy This parameter can be one of the following values:
+  *         @arg @ref LL_ADC_AWD1
+  * @retval Returned value can be:
+  *         @arg @ref LL_ADC_AWD_FILTERING_NONE
+  *         @arg @ref LL_ADC_AWD_FILTERING_2SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_3SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_4SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_5SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_6SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_7SAMPLES
+  *         @arg @ref LL_ADC_AWD_FILTERING_8SAMPLES
+  */
+__STATIC_INLINE uint32_t LL_ADC_GetAWDFilteringConfiguration(ADC_TypeDef *ADCx, uint32_t AWDy)
+{
+  if (ADCx == ADC3)
+  {
+    /* Prevent unused argument(s) compilation warning */
+    (void)(AWDy);
+    return (uint32_t)(READ_BIT(ADCx->LTR1_TR1, ADC3_TR1_AWDFILT));
+  }
+  else
+  {
+    /* Function not available on this instance, return 0 */
+    return 0UL;
+  }
+}
+#endif /* ADC_VER_V5_V90 */
 /**
   * @}
   */
@@ -5230,7 +6265,7 @@ __STATIC_INLINE void LL_ADC_ConfigOverSamplingRatioShift(ADC_TypeDef *ADCx, uint
 */
 __STATIC_INLINE uint32_t LL_ADC_GetOverSamplingRatio(ADC_TypeDef *ADCx)
 {
-  return (((uint32_t)(READ_BIT(ADCx->CFGR2, ADC_CFGR2_OVSR))+(1UL << ADC_CFGR2_OVSR_Pos)) >> ADC_CFGR2_OVSR_Pos);
+  return (((uint32_t)(READ_BIT(ADCx->CFGR2, ADC_CFGR2_OVSR)) + (1UL << ADC_CFGR2_OVSR_Pos)) >> ADC_CFGR2_OVSR_Pos);
 }
 
 /**
@@ -5282,7 +6317,13 @@ __STATIC_INLINE uint32_t LL_ADC_GetOverSamplingShift(ADC_TypeDef *ADCx)
   */
 __STATIC_INLINE void LL_ADC_SetBoostMode(ADC_TypeDef *ADCx, uint32_t BoostMode)
 {
-  if((DBGMCU->IDCODE & 0x30000000UL) == 0x10000000UL) /* Cut 1.x */
+#if defined(ADC_VER_V5_V90)
+  if (ADCx != ADC3)
+  {
+    MODIFY_REG(ADCx->CR, ADC_CR_BOOST, (BoostMode & ADC_CR_BOOST));
+  }
+#else   /* ADC_VER_V5_V90 */
+  if ((DBGMCU->IDCODE & 0x30000000UL) == 0x10000000UL) /* Cut 1.x */
   {
     MODIFY_REG(ADCx->CR, ADC_CR_BOOST_0, (BoostMode >> 2UL));
   }
@@ -5290,7 +6331,9 @@ __STATIC_INLINE void LL_ADC_SetBoostMode(ADC_TypeDef *ADCx, uint32_t BoostMode)
   {
     MODIFY_REG(ADCx->CR, ADC_CR_BOOST, (BoostMode & ADC_CR_BOOST));
   }
+#endif
 }
+
 
 /**
   * @brief  Get ADC boost mode.
@@ -5304,7 +6347,7 @@ __STATIC_INLINE void LL_ADC_SetBoostMode(ADC_TypeDef *ADCx, uint32_t BoostMode)
   */
 __STATIC_INLINE uint32_t LL_ADC_GetBoostMode(ADC_TypeDef *ADCx)
 {
-  if((DBGMCU->IDCODE & 0x30000000UL) == 0x10000000UL) /* Cut 1.x */
+  if ((DBGMCU->IDCODE & 0x30000000UL) == 0x10000000UL) /* Cut 1.x */
   {
     return (uint32_t)READ_BIT(ADCx->CR, ADC_CR_BOOST_0);
   }
@@ -6048,7 +7091,7 @@ __STATIC_INLINE uint32_t LL_ADC_INJ_IsStopConversionOngoing(ADC_TypeDef *ADCx)
 }
 
 /**
-  * @brief  Get ADC group regular conversion data, range fit for
+  * @brief  Get ADC group injected conversion data, range fit for
   *         all ADC configurations: all ADC resolutions and
   *         all oversampling increased data width (for devices
   *         with feature oversampling).
@@ -6066,7 +7109,7 @@ __STATIC_INLINE uint32_t LL_ADC_INJ_IsStopConversionOngoing(ADC_TypeDef *ADCx)
   */
 __STATIC_INLINE uint32_t LL_ADC_INJ_ReadConversionData32(ADC_TypeDef *ADCx, uint32_t Rank)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
 
   return (uint32_t)(READ_BIT(*preg,
                              ADC_JDR1_JDATA)
@@ -6093,7 +7136,7 @@ __STATIC_INLINE uint32_t LL_ADC_INJ_ReadConversionData32(ADC_TypeDef *ADCx, uint
   */
 __STATIC_INLINE uint16_t LL_ADC_INJ_ReadConversionData16(ADC_TypeDef *ADCx, uint32_t Rank)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
 
   return (uint16_t)(READ_BIT(*preg,
                              ADC_JDR1_JDATA)
@@ -6120,7 +7163,7 @@ __STATIC_INLINE uint16_t LL_ADC_INJ_ReadConversionData16(ADC_TypeDef *ADCx, uint
   */
 __STATIC_INLINE uint16_t LL_ADC_INJ_ReadConversionData14(ADC_TypeDef *ADCx, uint32_t Rank)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
 
   return (uint16_t)(READ_BIT(*preg,
                              ADC_JDR1_JDATA)
@@ -6147,7 +7190,7 @@ __STATIC_INLINE uint16_t LL_ADC_INJ_ReadConversionData14(ADC_TypeDef *ADCx, uint
   */
 __STATIC_INLINE uint16_t LL_ADC_INJ_ReadConversionData12(ADC_TypeDef *ADCx, uint32_t Rank)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
 
   return (uint16_t)(READ_BIT(*preg,
                              ADC_JDR1_JDATA)
@@ -6174,7 +7217,7 @@ __STATIC_INLINE uint16_t LL_ADC_INJ_ReadConversionData12(ADC_TypeDef *ADCx, uint
   */
 __STATIC_INLINE uint16_t LL_ADC_INJ_ReadConversionData10(ADC_TypeDef *ADCx, uint32_t Rank)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
 
   return (uint16_t)(READ_BIT(*preg,
                              ADC_JDR1_JDATA)
@@ -6201,7 +7244,7 @@ __STATIC_INLINE uint16_t LL_ADC_INJ_ReadConversionData10(ADC_TypeDef *ADCx, uint
   */
 __STATIC_INLINE uint8_t LL_ADC_INJ_ReadConversionData8(ADC_TypeDef *ADCx, uint32_t Rank)
 {
-  register const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
+  const __IO uint32_t *preg = __ADC_PTR_REG_OFFSET(ADCx->JDR1, ((Rank & ADC_INJ_JDRX_REGOFFSET_MASK) >> ADC_JDRX_REGOFFSET_POS));
 
   return (uint8_t)(READ_BIT(*preg,
                             ADC_JDR1_JDATA)

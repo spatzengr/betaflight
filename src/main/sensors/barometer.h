@@ -31,7 +31,8 @@ typedef enum {
     BARO_BMP280 = 4,
     BARO_LPS = 5,
     BARO_QMP6988 = 6,
-    BARO_BMP388 = 7
+    BARO_BMP388 = 7,
+    BARO_DPS310 = 8,
 } baroSensor_e;
 
 #define BARO_SAMPLE_COUNT_MAX   48
@@ -63,8 +64,9 @@ extern baro_t baro;
 
 void baroPreInit(void);
 bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse);
-bool isBaroCalibrationComplete(void);
-void baroSetCalibrationCycles(uint16_t calibrationCyclesRequired);
+bool baroIsCalibrationComplete(void);
+void baroStartCalibration(void);
+void baroSetGroundLevel(void);
 uint32_t baroUpdate(void);
 bool isBaroReady(void);
 int32_t baroCalculateAltitude(void);

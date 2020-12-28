@@ -24,47 +24,53 @@
 
 #include "platform.h"
 
+#if defined(USE_MAG)
+
 #include "common/axis.h"
 
-#include "pg/pg.h"
-#include "pg/pg_ids.h"
+#include "config/config.h"
 
+#include "drivers/bus.h"
 #include "drivers/bus_i2c.h"
 #include "drivers/bus_spi.h"
-#include "drivers/bus.h"
-#include "drivers/accgyro/accgyro_mpu.h"
 #include "drivers/compass/compass.h"
 #include "drivers/compass/compass_ak8975.h"
 #include "drivers/compass/compass_ak8963.h"
 #include "drivers/compass/compass_fake.h"
 #include "drivers/compass/compass_hmc5883l.h"
-#include "drivers/compass/compass_qmc5883l.h"
 #include "drivers/compass/compass_lis3mdl.h"
+#include "drivers/compass/compass_mpu925x_ak8963.h"
+#include "drivers/compass/compass_qmc5883l.h"
+
 #include "drivers/io.h"
 #include "drivers/light_led.h"
+#include "drivers/time.h"
 
-#include "fc/config.h"
 #include "fc/runtime_config.h"
 
+#include "pg/pg.h"
+#include "pg/pg_ids.h"
+
 #include "sensors/boardalignment.h"
-#include "sensors/compass.h"
 #include "sensors/gyro.h"
+#include "sensors/gyro_init.h"
 #include "sensors/sensors.h"
 
-#ifdef USE_HARDWARE_REVISION_DETECTION
-#include "hardware_revision.h"
-#endif
+#include "compass.h"
+
+static timeUs_t tCal = 0;
+static flightDynamicsTrims_t magZeroTempMin;
+static flightDynamicsTrims_t magZeroTempMax;
 
 magDev_t magDev;
 mag_t mag;                   // mag access functions
 
-PG_REGISTER_WITH_RESET_FN(compassConfig_t, compassConfig, PG_COMPASS_CONFIG, 1);
+PG_REGISTER_WITH_RESET_FN(compassConfig_t, compassConfig, PG_COMPASS_CONFIG, 3);
 
 void pgResetFn_compassConfig(compassConfig_t *compassConfig)
 {
     compassConfig->mag_alignment = ALIGN_DEFAULT;
     memset(&compassConfig->mag_customAlignment, 0x00, sizeof(compassConfig->mag_customAlignment));
-    compassConfig->mag_declination = 0;
     compassConfig->mag_hardware = MAG_DEFAULT;
 
 // Generate a reasonable default for backward compatibility
@@ -101,8 +107,6 @@ void pgResetFn_compassConfig(compassConfig_t *compassConfig)
 #endif
     compassConfig->interruptTag = IO_TAG(MAG_INT_EXTI);
 }
-
-#if defined(USE_MAG)
 
 static int16_t magADCRaw[XYZ_AXIS_COUNT];
 static uint8_t magInit = 0;
@@ -145,7 +149,7 @@ bool compassDetect(magDev_t *dev, uint8_t *alignment)
             if (!instance) {
                 return false;
             }
-      
+
             busdev->bustype = BUSTYPE_SPI;
             spiBusSetInstance(busdev, instance);
             busdev->busdev_u.spi.csnPin = IOGetByTag(compassConfig()->mag_spi_csn);
@@ -265,6 +269,18 @@ bool compassDetect(magDev_t *dev, uint8_t *alignment)
         break;
     }
 
+    // MAG_MPU925X_AK8963 is an MPU925x configured as I2C passthrough to the built-in AK8963 magnetometer
+    // Passthrough mode disables the gyro/acc part of the MPU, so we only want to detect this sensor if mag_hardware was explicitly set to MAG_MPU925X_AK8963
+#ifdef USE_MAG_MPU925X_AK8963
+    if(compassConfig()->mag_hardware == MAG_MPU925X_AK8963){
+        if (mpu925Xak8963CompassDetect(dev)) {
+            magHardware = MAG_MPU925X_AK8963;
+        } else {
+            return false;
+        }
+    }
+#endif
+
     if (magHardware == MAG_NONE) {
         return false;
     }
@@ -286,8 +302,6 @@ bool compassDetect(magDev_t *dev, sensor_align_e *alignment)
 bool compassInit(void)
 {
     // initialize and calibration. turn on led during mag calibration (calibration routine blinks it)
-    // calculate magnetic declination
-    mag.magneticDeclination = 0.0f; // TODO investigate if this is actually needed if there is no mag sensor or if the value stored in the config should be used.
 
     sensor_align_e alignment;
 
@@ -295,9 +309,6 @@ bool compassInit(void)
         return false;
     }
 
-    const int16_t deg = compassConfig()->mag_declination / 100;
-    const int16_t min = compassConfig()->mag_declination % 100;
-    mag.magneticDeclination = (deg + ((float)min * (1.0f / 60.0f))) * 10; // heading is in 0.1deg units
     LED1_ON;
     magDev.init(&magDev);
     LED1_OFF;
@@ -308,7 +319,7 @@ bool compassInit(void)
     if (compassConfig()->mag_alignment != ALIGN_DEFAULT) {
         magDev.magAlignment = compassConfig()->mag_alignment;
     }
-    
+
     buildRotationMatrixFromAlignment(&compassConfig()->mag_customAlignment, &magDev.rotationMatrix);
 
     return true;
@@ -319,11 +330,24 @@ bool compassIsHealthy(void)
     return (mag.magADC[X] != 0) && (mag.magADC[Y] != 0) && (mag.magADC[Z] != 0);
 }
 
+void compassStartCalibration(void)
+{
+    tCal = micros();
+    flightDynamicsTrims_t *magZero = &compassConfigMutable()->magZero;
+    for (int axis = 0; axis < 3; axis++) {
+        magZero->raw[axis] = 0;
+        magZeroTempMin.raw[axis] = mag.magADC[axis];
+        magZeroTempMax.raw[axis] = mag.magADC[axis];
+    }
+}
+
+bool compassIsCalibrationComplete(void)
+{
+    return tCal == 0;
+}
+
 void compassUpdate(timeUs_t currentTimeUs)
 {
-    static timeUs_t tCal = 0;
-    static flightDynamicsTrims_t magZeroTempMin;
-    static flightDynamicsTrims_t magZeroTempMax;
 
     magDev.read(&magDev, magADCRaw);
     for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
@@ -336,16 +360,6 @@ void compassUpdate(timeUs_t currentTimeUs)
     }
 
     flightDynamicsTrims_t *magZero = &compassConfigMutable()->magZero;
-    if (STATE(CALIBRATE_MAG)) {
-        tCal = currentTimeUs;
-        for (int axis = 0; axis < 3; axis++) {
-            magZero->raw[axis] = 0;
-            magZeroTempMin.raw[axis] = mag.magADC[axis];
-            magZeroTempMax.raw[axis] = mag.magADC[axis];
-        }
-        DISABLE_STATE(CALIBRATE_MAG);
-    }
-
     if (magInit) {              // we apply offset only once mag calibration is done
         mag.magADC[X] -= magZero->raw[X];
         mag.magADC[Y] -= magZero->raw[Y];

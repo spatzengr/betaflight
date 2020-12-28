@@ -38,7 +38,6 @@
 #include "drivers/motor.h"
 #include "drivers/timer.h"
 
-#include "drivers/dshot.h"
 #include "drivers/dshot_dpwm.h" // for motorDmaOutput_t, should be gone
 #include "drivers/dshot_command.h"
 #include "drivers/nvic.h"
@@ -46,28 +45,27 @@
 
 #include "fc/rc_controls.h" // for flight3DConfig_t
 
-#include "pg/motor.h"
-
 #include "rx/rx.h"
 
+#include "dshot.h"
 
-void dshotInitEndpoints(float outputLimit, float *outputLow, float *outputHigh, float *disarm, float *deadbandMotor3dHigh, float *deadbandMotor3dLow) {
-    float outputLimitOffset = (DSHOT_MAX_THROTTLE - DSHOT_MIN_THROTTLE) * (1 - outputLimit);
+void dshotInitEndpoints(const motorConfig_t *motorConfig, float outputLimit, float *outputLow, float *outputHigh, float *disarm, float *deadbandMotor3dHigh, float *deadbandMotor3dLow) {
+    float outputLimitOffset = DSHOT_RANGE * (1 - outputLimit);
     *disarm = DSHOT_CMD_MOTOR_STOP;
     if (featureIsEnabled(FEATURE_3D)) {
-        *outputLow = DSHOT_MIN_THROTTLE + ((DSHOT_3D_FORWARD_MIN_THROTTLE - 1 - DSHOT_MIN_THROTTLE) / 100.0f) * CONVERT_PARAMETER_TO_PERCENT(motorConfig()->digitalIdleOffsetValue);
+        *outputLow = DSHOT_MIN_THROTTLE + getDigitalIdleOffset(motorConfig) * (DSHOT_3D_FORWARD_MIN_THROTTLE - 1 - DSHOT_MIN_THROTTLE);
         *outputHigh = DSHOT_MAX_THROTTLE - outputLimitOffset / 2;
-        *deadbandMotor3dHigh = DSHOT_3D_FORWARD_MIN_THROTTLE + ((DSHOT_MAX_THROTTLE - DSHOT_3D_FORWARD_MIN_THROTTLE) / 100.0f) * CONVERT_PARAMETER_TO_PERCENT(motorConfig()->digitalIdleOffsetValue);
+        *deadbandMotor3dHigh = DSHOT_3D_FORWARD_MIN_THROTTLE + getDigitalIdleOffset(motorConfig) * (DSHOT_MAX_THROTTLE - DSHOT_3D_FORWARD_MIN_THROTTLE);
         *deadbandMotor3dLow = DSHOT_3D_FORWARD_MIN_THROTTLE - 1 - outputLimitOffset / 2;
     } else {
-        *outputLow = DSHOT_MIN_THROTTLE + ((DSHOT_MAX_THROTTLE - DSHOT_MIN_THROTTLE) / 100.0f) * CONVERT_PARAMETER_TO_PERCENT(motorConfig()->digitalIdleOffsetValue);
+        *outputLow = DSHOT_MIN_THROTTLE + getDigitalIdleOffset(motorConfig) * DSHOT_RANGE;
         *outputHigh = DSHOT_MAX_THROTTLE - outputLimitOffset;
     }
 }
 
 float dshotConvertFromExternal(uint16_t externalValue)
 {
-    uint16_t motorValue;
+    float motorValue;
 
     externalValue = constrain(externalValue, PWM_RANGE_MIN, PWM_RANGE_MAX);
 
@@ -75,15 +73,15 @@ float dshotConvertFromExternal(uint16_t externalValue)
         if (externalValue == PWM_RANGE_MIDDLE) {
             motorValue = DSHOT_CMD_MOTOR_STOP;
         } else if (externalValue < PWM_RANGE_MIDDLE) {
-            motorValue = scaleRange(externalValue, PWM_RANGE_MIN, PWM_RANGE_MIDDLE - 1, DSHOT_3D_FORWARD_MIN_THROTTLE - 1, DSHOT_MIN_THROTTLE);
+            motorValue = scaleRangef(externalValue, PWM_RANGE_MIN, PWM_RANGE_MIDDLE - 1, DSHOT_3D_FORWARD_MIN_THROTTLE - 1, DSHOT_MIN_THROTTLE);
         } else {
-            motorValue = scaleRange(externalValue, PWM_RANGE_MIDDLE + 1, PWM_RANGE_MAX, DSHOT_3D_FORWARD_MIN_THROTTLE, DSHOT_MAX_THROTTLE);
+            motorValue = scaleRangef(externalValue, PWM_RANGE_MIDDLE + 1, PWM_RANGE_MAX, DSHOT_3D_FORWARD_MIN_THROTTLE, DSHOT_MAX_THROTTLE);
         }
     } else {
-        motorValue = (externalValue == PWM_RANGE_MIN) ? DSHOT_CMD_MOTOR_STOP : scaleRange(externalValue, PWM_RANGE_MIN + 1, PWM_RANGE_MAX, DSHOT_MIN_THROTTLE, DSHOT_MAX_THROTTLE);
+        motorValue = (externalValue == PWM_RANGE_MIN) ? DSHOT_CMD_MOTOR_STOP : scaleRangef(externalValue, PWM_RANGE_MIN + 1, PWM_RANGE_MAX, DSHOT_MIN_THROTTLE, DSHOT_MAX_THROTTLE);
     }
 
-    return (float)motorValue;
+    return motorValue;
 }
 
 uint16_t dshotConvertToExternal(float motorValue)
@@ -94,19 +92,19 @@ uint16_t dshotConvertToExternal(float motorValue)
         if (motorValue == DSHOT_CMD_MOTOR_STOP || motorValue < DSHOT_MIN_THROTTLE) {
             externalValue = PWM_RANGE_MIDDLE;
         } else if (motorValue <= DSHOT_3D_FORWARD_MIN_THROTTLE - 1) {
-            externalValue = scaleRange(motorValue, DSHOT_MIN_THROTTLE, DSHOT_3D_FORWARD_MIN_THROTTLE - 1, PWM_RANGE_MIDDLE - 1, PWM_RANGE_MIN);
+            externalValue = scaleRangef(motorValue, DSHOT_MIN_THROTTLE, DSHOT_3D_FORWARD_MIN_THROTTLE - 1, PWM_RANGE_MIDDLE - 1, PWM_RANGE_MIN);
         } else {
-            externalValue = scaleRange(motorValue, DSHOT_3D_FORWARD_MIN_THROTTLE, DSHOT_MAX_THROTTLE, PWM_RANGE_MIDDLE + 1, PWM_RANGE_MAX);
+            externalValue = scaleRangef(motorValue, DSHOT_3D_FORWARD_MIN_THROTTLE, DSHOT_MAX_THROTTLE, PWM_RANGE_MIDDLE + 1, PWM_RANGE_MAX);
         }
     } else {
-        externalValue = (motorValue < DSHOT_MIN_THROTTLE) ? PWM_RANGE_MIN : scaleRange(motorValue, DSHOT_MIN_THROTTLE, DSHOT_MAX_THROTTLE, PWM_RANGE_MIN + 1, PWM_RANGE_MAX);
+        externalValue = (motorValue < DSHOT_MIN_THROTTLE) ? PWM_RANGE_MIN : scaleRangef(motorValue, DSHOT_MIN_THROTTLE, DSHOT_MAX_THROTTLE, PWM_RANGE_MIN + 1, PWM_RANGE_MAX);
     }
 
     return externalValue;
 }
 
 FAST_CODE uint16_t prepareDshotPacket(dshotProtocolControl_t *pcb)
-{   
+{
     uint16_t packet;
 
     ATOMIC_BLOCK(NVIC_PRIO_DSHOT_DMA) {
@@ -115,14 +113,14 @@ FAST_CODE uint16_t prepareDshotPacket(dshotProtocolControl_t *pcb)
     }
 
     // compute checksum
-    unsigned csum = 0; 
+    unsigned csum = 0;
     unsigned csum_data = packet;
     for (int i = 0; i < 3; i++) {
         csum ^=  csum_data;   // xor data by nibbles
         csum_data >>= 4;
     }
     // append checksum
-#ifdef USE_DSHOT_TELEMETRY 
+#ifdef USE_DSHOT_TELEMETRY
     if (useDshotTelemetry) {
         csum = ~csum;
     }
@@ -134,7 +132,7 @@ FAST_CODE uint16_t prepareDshotPacket(dshotProtocolControl_t *pcb)
 }
 
 #ifdef USE_DSHOT_TELEMETRY
-FAST_RAM_ZERO_INIT dshotTelemetryState_t dshotTelemetryState;
+FAST_DATA_ZERO_INIT dshotTelemetryState_t dshotTelemetryState;
 
 uint16_t getDshotTelemetry(uint8_t index)
 {
@@ -144,7 +142,7 @@ uint16_t getDshotTelemetry(uint8_t index)
 #endif
 
 #ifdef USE_DSHOT_TELEMETRY_STATS
-FAST_RAM_ZERO_INIT dshotTelemetryQuality_t dshotTelemetryQuality[MAX_SUPPORTED_MOTORS];
+FAST_DATA_ZERO_INIT dshotTelemetryQuality_t dshotTelemetryQuality[MAX_SUPPORTED_MOTORS];
 
 void updateDshotTelemetryQuality(dshotTelemetryQuality_t *qualityStats, bool packetValid, timeMs_t currentTimeMs)
 {
@@ -166,3 +164,39 @@ void updateDshotTelemetryQuality(dshotTelemetryQuality_t *qualityStats, bool pac
 #endif // USE_DSHOT_TELEMETRY_STATS
 
 #endif // USE_DSHOT
+
+// temporarly here, needs to be moved during refactoring
+void validateAndfixMotorOutputReordering(uint8_t *array, const unsigned size)
+{
+    bool invalid = false;
+
+    for (unsigned i = 0; i < size; i++) {
+        if (array[i] >= size) {
+            invalid = true;
+            break;
+        }
+    }
+
+    int valuesAsIndexes[size];
+
+    for (unsigned i = 0; i < size; i++) {
+        valuesAsIndexes[i] = -1;
+    }
+
+    if (!invalid) {
+        for (unsigned i = 0; i < size; i++) {
+            if (-1 != valuesAsIndexes[array[i]]) {
+                invalid = true;
+                break;
+            }
+
+            valuesAsIndexes[array[i]] = array[i];
+        }
+    }
+
+    if (invalid) {
+        for (unsigned i = 0; i < size; i++) {
+            array[i] = i;
+        }
+    }
+}

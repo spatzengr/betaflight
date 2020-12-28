@@ -37,7 +37,7 @@ extern "C" {
     #include "drivers/timer.h"
     #include "drivers/timer_def.h"
 
-    #include "fc/config.h"
+    #include "config/config.h"
     #include "fc/rc_controls.h"
     #include "fc/rc_modes.h"
     #include "fc/runtime_config.h"
@@ -166,7 +166,7 @@ TEST(LedStripTest, parseLedStripConfig)
 
     // when
     for (uint8_t index = 0; index < (sizeof(ledStripConfigCommands) / sizeof(ledStripConfigCommands[0])); index++) {
-        EXPECT_EQ(true, parseLedStripConfig(index, ledStripConfigCommands[index]));
+        EXPECT_TRUE(parseLedStripConfig(index, ledStripConfigCommands[index]));
     }
 
     // then
@@ -396,5 +396,5 @@ bool isFlipOverAfterCrashActive(void) { return false; }
 void ws2811LedStripEnable(void) { }
 
 void setUsedLedCount(unsigned) { };
-
+void pinioBoxTaskControl(void) {}
 }

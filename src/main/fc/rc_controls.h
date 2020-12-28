@@ -37,7 +37,11 @@ typedef enum rc_alias {
     AUX5,
     AUX6,
     AUX7,
-    AUX8
+    AUX8,
+    AUX9,
+    AUX10,
+    AUX11,
+    AUX12
 } rc_alias_e;
 
 #define PRIMARY_CHANNEL_COUNT (THROTTLE + 1)
@@ -74,7 +78,8 @@ typedef enum {
 typedef enum {
     RC_SMOOTHING_DERIVATIVE_OFF,
     RC_SMOOTHING_DERIVATIVE_PT1,
-    RC_SMOOTHING_DERIVATIVE_BIQUAD
+    RC_SMOOTHING_DERIVATIVE_BIQUAD,
+    RC_SMOOTHING_DERIVATIVE_AUTO,
 } rcSmoothingDerivativeFilter_e;
 
 #define ROL_LO (1 << (2 * ROLL))
@@ -122,6 +127,7 @@ typedef struct rcSmoothingFilter_s {
     rcSmoothingInputFilter_e inputFilterType;
     uint8_t inputCutoffSetting;
     uint16_t inputCutoffFrequency;
+    rcSmoothingDerivativeFilter_e derivativeFilterTypeSetting;
     rcSmoothingDerivativeFilter_e derivativeFilterType;
     uint8_t derivativeCutoffSetting;
     uint16_t derivativeCutoffFrequency;

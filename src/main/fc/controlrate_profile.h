@@ -28,6 +28,8 @@ typedef enum {
     RATES_TYPE_BETAFLIGHT = 0,
     RATES_TYPE_RACEFLIGHT,
     RATES_TYPE_KISS,
+    RATES_TYPE_ACTUAL,
+    RATES_TYPE_QUICK,
 } ratesType_e;
 
 typedef enum {
@@ -58,6 +60,7 @@ typedef struct controlRateConfig_s {
     uint16_t rate_limit[3];                 // Sets the maximum rate for the axes
     uint8_t tpaMode;                        // Controls which PID terms TPA effects
     char profileName[MAX_RATE_PROFILE_NAME_LENGTH + 1]; // Descriptive name for rate profile
+    uint8_t quickRatesRcExpo;               // Sets expo on rc command for quick rates
 } controlRateConfig_t;
 
 PG_DECLARE_ARRAY(controlRateConfig_t, CONTROL_RATE_PROFILE_COUNT, controlRateProfiles);

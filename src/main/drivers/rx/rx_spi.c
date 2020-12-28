@@ -34,12 +34,17 @@
 #include "drivers/bus_spi.h"
 #include "drivers/io.h"
 #include "drivers/io_impl.h"
+#include "drivers/nvic.h"
 #include "drivers/rcc.h"
 #include "drivers/system.h"
+#include "drivers/time.h"
 
 #include "pg/rx_spi.h"
 
 #include "rx_spi.h"
+
+// 10 MHz max SPI frequency
+#define RX_MAX_SPI_CLK_HZ 10000000
 
 #define ENABLE_RX() IOLo(busdev->busdev_u.spi.csnPin)
 #define DISABLE_RX() IOHi(busdev->busdev_u.spi.csnPin)
@@ -47,9 +52,28 @@
 static busDevice_t rxSpiDevice;
 static busDevice_t *busdev = &rxSpiDevice;
 
+static IO_t extiPin = IO_NONE;
+static extiCallbackRec_t rxSpiExtiCallbackRec;
+static bool extiLevel = true;
+
+static volatile bool extiHasOccurred = false;
+static volatile timeUs_t lastExtiTimeUs = 0;
+
 void rxSpiDevicePreInit(const rxSpiConfig_t *rxSpiConfig)
 {
     spiPreinitRegister(rxSpiConfig->csnTag, IOCFG_IPU, 1);
+}
+
+void rxSpiExtiHandler(extiCallbackRec_t* callback)
+{
+    UNUSED(callback);
+
+    const timeUs_t extiTimeUs = microsISR();
+
+    if (IORead(extiPin) == extiLevel) {
+        lastExtiTimeUs = extiTimeUs;
+        extiHasOccurred = true;
+    }
 }
 
 bool rxSpiDeviceInit(const rxSpiConfig_t *rxSpiConfig)
@@ -69,13 +93,32 @@ bool rxSpiDeviceInit(const rxSpiConfig_t *rxSpiConfig)
 
     IOHi(rxCsPin);
 #ifdef USE_SPI_TRANSACTION
-    spiBusTransactionInit(busdev, SPI_MODE0_POL_LOW_EDGE_1ST, SPI_CLOCK_STANDARD);
+    spiBusTransactionInit(busdev, SPI_MODE0_POL_LOW_EDGE_1ST, spiCalculateDivider(RX_MAX_SPI_CLK_HZ));
 #else
-    spiBusSetDivisor(busdev, SPI_CLOCK_STANDARD);
+    spiBusSetDivisor(busdev, spiCalculateDivider(RX_MAX_SPI_CLK_HZ));
 #endif
+
+    extiPin = IOGetByTag(rxSpiConfig->extiIoTag);
+
+    if (extiPin) {
+        IOInit(extiPin, OWNER_RX_SPI_EXTI, 0);
+    }
 
     return true;
 }
+
+void rxSpiExtiInit(ioConfig_t rxSpiExtiPinConfig, extiTrigger_t rxSpiExtiPinTrigger)
+{
+    if (extiPin) {
+        if (rxSpiExtiPinTrigger == BETAFLIGHT_EXTI_TRIGGER_FALLING) {
+            extiLevel = false;
+        }
+        EXTIHandlerInit(&rxSpiExtiCallbackRec, rxSpiExtiHandler);
+        EXTIConfig(extiPin, &rxSpiExtiCallbackRec, NVIC_PRIO_MPU_INT_EXTI, rxSpiExtiPinConfig, rxSpiExtiPinTrigger);
+        EXTIEnable(extiPin, true);
+    }
+}
+
 
 uint8_t rxSpiTransferByte(uint8_t data)
 {
@@ -107,5 +150,30 @@ void rxSpiReadCommandMulti(uint8_t command, uint8_t commandData, uint8_t *retDat
 {
     UNUSED(commandData);
     spiBusRawReadRegisterBuffer(busdev, command, retData, length);
+}
+
+bool rxSpiExtiConfigured(void)
+{
+    return extiPin != IO_NONE;
+}
+
+bool rxSpiGetExtiState(void)
+{
+    return IORead(extiPin);
+}
+
+bool rxSpiPollExti(void)
+{
+    return extiHasOccurred;
+}
+
+void rxSpiResetExti(void)
+{
+    extiHasOccurred = false;
+}
+
+timeUs_t rxSpiGetLastExtiTimeUs(void)
+{
+    return lastExtiTimeUs;
 }
 #endif

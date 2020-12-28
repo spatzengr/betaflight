@@ -46,13 +46,14 @@
 #include "drivers/dshot.h"
 #include "drivers/dshot_dpwm.h"
 #include "drivers/dshot_command.h"
+#include "drivers/motor.h"
 
 #include "pwm_output_dshot_shared.h"
 
-FAST_RAM_ZERO_INIT uint8_t dmaMotorTimerCount = 0;
+FAST_DATA_ZERO_INIT uint8_t dmaMotorTimerCount = 0;
 #ifdef STM32F7
-FAST_RAM_ZERO_INIT motorDmaTimer_t dmaMotorTimers[MAX_DMA_TIMERS];
-FAST_RAM_ZERO_INIT motorDmaOutput_t dmaMotors[MAX_SUPPORTED_MOTORS];
+FAST_DATA_ZERO_INIT motorDmaTimer_t dmaMotorTimers[MAX_DMA_TIMERS];
+FAST_DATA_ZERO_INIT motorDmaOutput_t dmaMotors[MAX_SUPPORTED_MOTORS];
 #else
 motorDmaTimer_t dmaMotorTimers[MAX_DMA_TIMERS];
 motorDmaOutput_t dmaMotors[MAX_SUPPORTED_MOTORS];
@@ -61,9 +62,9 @@ motorDmaOutput_t dmaMotors[MAX_SUPPORTED_MOTORS];
 #ifdef USE_DSHOT_TELEMETRY
 
 // TODO remove once debugging no longer needed
-FAST_RAM_ZERO_INIT uint32_t inputStampUs;
+FAST_DATA_ZERO_INIT uint32_t inputStampUs;
 
-FAST_RAM_ZERO_INIT dshotDMAHandlerCycleCounters_t dshotDMAHandlerCycleCounters;
+FAST_DATA_ZERO_INIT dshotDMAHandlerCycleCounters_t dshotDMAHandlerCycleCounters;
 #endif
 
 motorDmaOutput_t *getMotorDmaOutput(uint8_t index)
@@ -94,13 +95,6 @@ FAST_CODE void pwmWriteDshotInt(uint8_t index, uint16_t value)
     /*If there is a command ready to go overwrite the value and send that instead*/
     if (dshotCommandIsProcessing()) {
         value = dshotCommandGetCurrent(index);
-#ifdef USE_DSHOT_TELEMETRY
-        // reset telemetry debug statistics every time telemetry is enabled
-        if (value == DSHOT_CMD_SIGNAL_LINE_CONTINUOUS_ERPM_TELEMETRY) {
-            dshotTelemetryState.invalidPacketCount = 0;
-            dshotTelemetryState.readCount = 0;
-        }
-#endif
         if (value) {
             motor->protocolControl.requestTelemetry = true;
         }
@@ -226,7 +220,7 @@ FAST_CODE_NOINLINE bool pwmStartDshotMotorUpdate(void)
             if (edges > MIN_GCR_EDGES) {
                 dshotTelemetryState.readCount++;
                 value = decodeTelemetryPacket(dmaMotors[i].dmaBuffer, edges);
-                
+
 #ifdef USE_DSHOT_TELEMETRY_STATS
                 bool validTelemetryPacket = false;
 #endif
@@ -247,8 +241,8 @@ FAST_CODE_NOINLINE bool pwmStartDshotMotorUpdate(void)
                 }
 #ifdef USE_DSHOT_TELEMETRY_STATS
                 updateDshotTelemetryQuality(&dshotTelemetryQuality[i], validTelemetryPacket, currentTimeMs);
-            }
 #endif
+            }
         }
         pwmDshotSetDirectionOutput(&dmaMotors[i]);
     }
@@ -264,12 +258,16 @@ bool isDshotMotorTelemetryActive(uint8_t motorIndex)
 
 bool isDshotTelemetryActive(void)
 {
-    for (unsigned i = 0; i < dshotPwmDevice.count; i++) {
-        if (!isDshotMotorTelemetryActive(i)) {
-            return false;
+    const unsigned motorCount = motorDeviceCount();
+    if (motorCount) {
+        for (unsigned i = 0; i < motorCount; i++) {
+            if (!isDshotMotorTelemetryActive(i)) {
+                return false;
+            }
         }
+        return true;
     }
-    return true;
+    return false;
 }
 
 #ifdef USE_DSHOT_TELEMETRY_STATS

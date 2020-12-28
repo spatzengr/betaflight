@@ -50,6 +50,9 @@
 #include "accgyro_spi_bmi160.h"
 
 
+// 10 MHz max SPI frequency
+#define BMI160_MAX_SPI_CLK_HZ 10000000
+
 /* BMI160 Registers */
 #define BMI160_REG_CHIPID 0x00
 #define BMI160_REG_PMU_STAT 0x03
@@ -95,8 +98,7 @@ uint8_t bmi160Detect(const busDevice_t *bus)
         return BMI_160_SPI;
     }
 
-
-    spiSetDivisor(bus->busdev_u.spi.instance, BMI160_SPI_DIVISOR);
+    spiSetDivisor(bus->busdev_u.spi.instance, spiCalculateDivider(BMI160_MAX_SPI_CLK_HZ));
 
     /* Read this address to activate SPI (see p. 84) */
     spiBusReadRegister(bus, 0x7F);
@@ -153,7 +155,7 @@ static int32_t BMI160_Config(const busDevice_t *bus)
 
     // Verify that normal power mode was entered
     uint8_t pmu_status = spiBusReadRegister(bus, BMI160_REG_PMU_STAT);
-    if ((pmu_status & 0x3C) != 0x14){
+    if ((pmu_status & 0x3C) != 0x14) {
         return -3;
     }
 
@@ -252,7 +254,7 @@ static void bmi160IntExtiInit(gyroDev_t *gyro)
 
     IOInit(mpuIntIO, OWNER_GYRO_EXTI, 0);
     EXTIHandlerInit(&gyro->exti, bmi160ExtiHandler);
-    EXTIConfig(mpuIntIO, &gyro->exti, NVIC_PRIO_MPU_INT_EXTI, IOCFG_IN_FLOATING, EXTI_TRIGGER_RISING); // TODO - maybe pullup / pulldown ?
+    EXTIConfig(mpuIntIO, &gyro->exti, NVIC_PRIO_MPU_INT_EXTI, IOCFG_IN_FLOATING, BETAFLIGHT_EXTI_TRIGGER_RISING); // TODO - maybe pullup / pulldown ?
     EXTIEnable(mpuIntIO, true);
 }
 #endif
@@ -350,7 +352,7 @@ bool bmi160SpiGyroDetect(gyroDev_t *gyro)
 
     gyro->initFn = bmi160SpiGyroInit;
     gyro->readFn = bmi160GyroRead;
-    gyro->scale = 1.0f / 16.4f;
+    gyro->scale = GYRO_SCALE_2000DPS;
 
     return true;
 }

@@ -30,10 +30,11 @@
 
 #include "config/feature.h"
 
-#include "fc/config.h"
+#include "config/config.h"
 #include "fc/runtime_config.h"
 
 #include "flight/mixer.h"
+#include "flight/pid.h"
 
 #include "sensors/sensors.h"
 
@@ -65,7 +66,7 @@ static const box_t boxes[CHECKBOX_ITEM_COUNT] = {
 //    { BOXLLIGHTS, "LLIGHTS", 16 }, (removed)
     { BOXCALIB, "CALIB", 17 },
 //    { BOXGOV, "GOVERNOR", 18 }, (removed)
-    { BOXOSD, "OSD DISABLE SW", 19 },
+    { BOXOSD, "OSD DISABLE", 19 },
     { BOXTELEMETRY, "TELEMETRY", 20 },
 //    { BOXGTUNE, "GTUNE", 21 }, (removed)
 //    { BOXRANGEFINDER, "RANGEFINDER", 22 }, (removed)
@@ -75,7 +76,7 @@ static const box_t boxes[CHECKBOX_ITEM_COUNT] = {
     { BOXBLACKBOX, "BLACKBOX", 26 },
     { BOXFAILSAFE, "FAILSAFE", 27 },
     { BOXAIRMODE, "AIR MODE", 28 },
-    { BOX3D, "DISABLE / SWITCH 3D", 29},
+    { BOX3D, "3D DISABLE / SWITCH", 29},
     { BOXFPVANGLEMIX, "FPV ANGLE MIX", 30},
     { BOXBLACKBOXERASE, "BLACKBOX ERASE (>30s)", 31 },
     { BOXCAMERA1, "CAMERA CONTROL 1", 32},
@@ -83,7 +84,7 @@ static const box_t boxes[CHECKBOX_ITEM_COUNT] = {
     { BOXCAMERA3, "CAMERA CONTROL 3", 34 },
     { BOXFLIPOVERAFTERCRASH, "FLIP OVER AFTER CRASH", 35 },
     { BOXPREARM, "PREARM", 36 },
-    { BOXBEEPGPSCOUNT, "BEEP GPS SATELLITE COUNT", 37 },
+    { BOXBEEPGPSCOUNT, "GPS BEEP SATELLITE COUNT", 37 },
 //    { BOX3DONASWITCH, "3D ON A SWITCH", 38 }, (removed)
     { BOXVTXPITMODE, "VTX PIT MODE", 39 },
     { BOXUSER1, "USER1", 40 },
@@ -94,8 +95,11 @@ static const box_t boxes[CHECKBOX_ITEM_COUNT] = {
     { BOXPARALYZE, "PARALYZE", 45 },
     { BOXGPSRESCUE, "GPS RESCUE", 46 },
     { BOXACROTRAINER, "ACRO TRAINER", 47 },
-    { BOXVTXCONTROLDISABLE, "DISABLE VTX CONTROL", 48},
+    { BOXVTXCONTROLDISABLE, "VTX CONTROL DISABLE", 48},
     { BOXLAUNCHCONTROL, "LAUNCH CONTROL", 49 },
+    { BOXMSPOVERRIDE, "MSP OVERRIDE", 50},
+    { BOXSTICKCOMMANDDISABLE, "STICK COMMANDS DISABLE", 51},
+    { BOXBEEPERMUTE, "BEEPER MUTE", 52},
 };
 
 // mask of enabled IDs, calculated on startup based on enabled features. boxId_e is used as bit index
@@ -124,14 +128,29 @@ const box_t *findBoxByPermanentId(uint8_t permanentId)
 
 static bool activeBoxIdGet(boxId_e boxId)
 {
-    if (boxId > sizeof(activeBoxIds) * 8)
+    if (boxId > sizeof(activeBoxIds) * 8) {
         return false;
+    }
+
     return bitArrayGet(&activeBoxIds, boxId);
 }
 
 void serializeBoxNameFn(sbuf_t *dst, const box_t *box)
 {
-    sbufWriteString(dst, box->boxName);
+#if defined(USE_CUSTOM_BOX_NAMES)
+    if (box->boxId == BOXUSER1 && strlen(modeActivationConfig()->box_user_1_name) > 0) {
+        sbufWriteString(dst, modeActivationConfig()->box_user_1_name);
+    } else if (box->boxId == BOXUSER2 && strlen(modeActivationConfig()->box_user_2_name) > 0) {
+        sbufWriteString(dst, modeActivationConfig()->box_user_2_name);
+    } else if (box->boxId == BOXUSER3 && strlen(modeActivationConfig()->box_user_3_name) > 0) {
+        sbufWriteString(dst, modeActivationConfig()->box_user_3_name);
+    } else if (box->boxId == BOXUSER4 && strlen(modeActivationConfig()->box_user_4_name) > 0) {
+        sbufWriteString(dst, modeActivationConfig()->box_user_4_name);
+    } else
+#endif
+    {
+        sbufWriteString(dst, box->boxName);
+    }
     sbufWriteU8(dst, ';');
 }
 
@@ -171,7 +190,13 @@ void initActiveBoxIds(void)
         BME(BOXAIRMODE);
     }
 
-    if (!featureIsEnabled(FEATURE_ANTI_GRAVITY)) {
+    bool acceleratorGainsEnabled = false;
+    for (unsigned i = 0; i < PID_PROFILE_COUNT; i++) {
+        if (pidProfiles(i)->itermAcceleratorGain != ITERM_ACCELERATOR_GAIN_OFF) {
+            acceleratorGainsEnabled = true;
+        }
+    }
+    if (acceleratorGainsEnabled && !featureIsEnabled(FEATURE_ANTI_GRAVITY)) {
         BME(BOXANTIGRAVITY);
     }
 
@@ -191,7 +216,7 @@ void initActiveBoxIds(void)
 #ifdef USE_GPS
     if (featureIsEnabled(FEATURE_GPS)) {
 #ifdef USE_GPS_RESCUE
-        if (!featureIsEnabled(FEATURE_3D)) {
+        if (!featureIsEnabled(FEATURE_3D) && !isFixedWing()) {
             BME(BOXGPSRESCUE);
         }
 #endif
@@ -206,6 +231,7 @@ void initActiveBoxIds(void)
     }
 
     BME(BOXBEEPERON);
+    BME(BOXBEEPERMUTE);
 
 #ifdef USE_LED_STRIP
     if (featureIsEnabled(FEATURE_LED_STRIP)) {
@@ -227,7 +253,9 @@ void initActiveBoxIds(void)
     }
 
 #ifdef USE_DSHOT
-    if (isMotorProtocolDshot()) {
+    bool configuredMotorProtocolDshot;
+    checkMotorProtocolEnabled(&motorConfig()->dev, &configuredMotorProtocolDshot);
+    if (configuredMotorProtocolDshot) {
         BME(BOXFLIPOVERAFTERCRASH);
     }
 #endif
@@ -304,6 +332,8 @@ void initActiveBoxIds(void)
 #ifdef USE_LAUNCH_CONTROL
     BME(BOXLAUNCHCONTROL);
 #endif
+
+    BME(BOXSTICKCOMMANDDISABLE);
 
 #undef BME
     // check that all enabled IDs are in boxes array (check may be skipped when using findBoxById() functions)

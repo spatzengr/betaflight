@@ -47,7 +47,7 @@ void targetConfiguration(void)
     pinioConfigMutable()->config[0] = PINIO_CONFIG_OUT_INVERTED | PINIO_CONFIG_MODE_OUT_PP;
     pinioBoxConfigMutable()->permanentId[0] = BOXARM;
     
-    serialPortConfig_t *bluetoothMspUART = serialFindPortConfiguration(BLUETOOTH_MSP_UART);
+    serialPortConfig_t *bluetoothMspUART = serialFindPortConfigurationMutable(BLUETOOTH_MSP_UART);
     if (bluetoothMspUART) {
         bluetoothMspUART->functionMask = FUNCTION_MSP;
         bluetoothMspUART->msp_baudrateIndex = BLUETOOTH_MSP_BAUDRATE;
@@ -55,8 +55,8 @@ void targetConfiguration(void)
 
     targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
 
-    osdConfigMutable()->item_pos[OSD_MAIN_BATT_VOLTAGE] = OSD_POS(1, 12) | OSD_PROFILE_1_FLAG;
-    osdConfigMutable()->item_pos[OSD_ALTITUDE] = OSD_POS(1, 11) | OSD_PROFILE_1_FLAG;
+    osdElementConfigMutable()->item_pos[OSD_MAIN_BATT_VOLTAGE] = OSD_POS(1, 12) | OSD_PROFILE_1_FLAG;
+    osdElementConfigMutable()->item_pos[OSD_ALTITUDE] = OSD_POS(1, 11) | OSD_PROFILE_1_FLAG;
 
     motorConfigMutable()->dev.motorPwmProtocol = PWM_TYPE_DSHOT600;
 }

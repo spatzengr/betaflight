@@ -79,7 +79,9 @@ const adcDevice_t adcHardware[ADCDEV_COUNT] = {
         .channel = DMA_REQUEST_ADC2,
 #endif
     },
-    // ADC3 can be serviced by BDMA also, but we settle for DMA1 or 2 (for now).
+#if !(defined(STM32H7A3xx) || defined(STM32H7A3xxQ))
+    // ADC3 is not available on H7A3
+    // On H743 and H750, ADC3 can be serviced by BDMA also, but we settle for DMA1 or 2 (for now).
     {
         .ADCx = ADC3_INSTANCE,
         .rccADC = RCC_AHB4(ADC3),
@@ -88,9 +90,18 @@ const adcDevice_t adcHardware[ADCDEV_COUNT] = {
         .channel = DMA_REQUEST_ADC3,
 #endif
     }
+#endif // !STM32H7A3
 };
 
 adcDevice_t adcDevice[ADCDEV_COUNT];
+
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx)
+#define ADC_DEVICE_FOR_INTERNAL ADC_DEVICES_3
+#elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
+#define ADC_DEVICE_FOR_INTERNAL ADC_DEVICES_2
+#else
+#error Unknown MCU
+#endif
 
 /* note these could be packed up for saving space */
 const adcTagMap_t adcTagMap[] = {
@@ -99,8 +110,14 @@ const adcTagMap_t adcTagMap[] = {
     // Keep these at the beginning for easy indexing by ADC_TAG_MAP_{VREFINT,TEMPSENSOR}
 #define ADC_TAG_MAP_VREFINT    0
 #define ADC_TAG_MAP_TEMPSENSOR 1
-    { DEFIO_TAG_E__NONE, ADC_DEVICES_3,   ADC_CHANNEL_VREFINT,    18 },
-    { DEFIO_TAG_E__NONE, ADC_DEVICES_3,   ADC_CHANNEL_TEMPSENSOR, 19 },
+
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
+    { DEFIO_TAG_E__NONE, ADC_DEVICE_FOR_INTERNAL,   ADC_CHANNEL_VREFINT,    18 },
+    { DEFIO_TAG_E__NONE, ADC_DEVICE_FOR_INTERNAL,   ADC_CHANNEL_TEMPSENSOR, 17 },
+#elif defined(STM32H723xx) || defined(STM32H725xx)
+    { DEFIO_TAG_E__NONE, ADC_DEVICE_FOR_INTERNAL,   ADC_CHANNEL_VREFINT,    18 },
+    { DEFIO_TAG_E__NONE, ADC_DEVICE_FOR_INTERNAL,   ADC_CHANNEL_TEMPSENSOR, 19 },
+#endif
 #endif
     // Inputs available for all packages
     { DEFIO_TAG_E__PC0,  ADC_DEVICES_123, ADC_CHANNEL_10, 10 },
@@ -162,7 +179,7 @@ static uint32_t adcRegularRankMap[] = {
 
 #undef RANK
 
-static void Error_Handler(void) { while (1) { } }
+static void errorHandler(void) { while (1) { } }
 
 // Note on sampling time.
 // Temperature sensor has minimum sample time of 9us.
@@ -174,11 +191,7 @@ void adcInitDevice(adcDevice_t *adcdev, int channelCount)
 
     hadc->Instance = adcdev->ADCx;
 
-    if (HAL_ADC_DeInit(hadc) != HAL_OK)
-    {
-      // ADC de-initialization Error
-      Error_Handler();
-    }
+    // DeInit is done in adcInit().
 
     hadc->Init.ClockPrescaler           = ADC_CLOCK_SYNC_PCLK_DIV4;
     hadc->Init.Resolution               = ADC_RESOLUTION_12B;
@@ -189,22 +202,34 @@ void adcInitDevice(adcDevice_t *adcdev, int channelCount)
     hadc->Init.NbrOfConversion          = channelCount;
     hadc->Init.DiscontinuousConvMode    = DISABLE;
     hadc->Init.NbrOfDiscConversion      = 1;                             // Don't care
-    hadc->Init.ExternalTrigConv         = ADC_SOFTWARE_START;   
+    hadc->Init.ExternalTrigConv         = ADC_SOFTWARE_START;
     hadc->Init.ExternalTrigConvEdge     = ADC_EXTERNALTRIGCONVEDGE_NONE; // Don't care
-    hadc->Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR;
+
+    // Enable circular DMA.
+    // ADC3 of H72X and H73X has a special way of doing this.
+#if defined(STM32H723xx) || defined(STM32H725xx)
+    if (adcdev->ADCx == ADC3) {
+        hadc->Init.DMAContinuousRequests = ENABLE;
+    } else
+#else
+    {
+        hadc->Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR;
+    }
+#endif
+
     hadc->Init.Overrun                  = ADC_OVR_DATA_OVERWRITTEN;
     hadc->Init.OversamplingMode         = DISABLE;
 
     // Initialize this ADC peripheral
 
     if (HAL_ADC_Init(hadc) != HAL_OK) {
-      Error_Handler();
+      errorHandler();
     }
 
     // Execute calibration
 
     if (HAL_ADCEx_Calibration_Start(hadc, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED) != HAL_OK) {
-      Error_Handler();
+      errorHandler();
     }
 }
 
@@ -218,11 +243,21 @@ int adcFindTagMapEntry(ioTag_t tag)
     return -1;
 }
 
+// H743, H750 and H7A3 seems to use 16-bit precision value,
+// while H723 and H725 seems to use 12-bit precision value.
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
+#define VREFINT_CAL_SHIFT 4
+#elif defined(STM32H723xx) || defined(STM32H725xx)
+#define VREFINT_CAL_SHIFT 0
+#else
+#error Unknown MCU
+#endif
+
 void adcInitCalibrationValues(void)
 {
-    adcVREFINTCAL = *(uint16_t *)VREFINT_CAL_ADDR >> 4;
-    adcTSCAL1 = *TEMPSENSOR_CAL1_ADDR >> 4;
-    adcTSCAL2 = *TEMPSENSOR_CAL2_ADDR >> 4;
+    adcVREFINTCAL = *VREFINT_CAL_ADDR >> VREFINT_CAL_SHIFT;
+    adcTSCAL1 = *TEMPSENSOR_CAL1_ADDR >> VREFINT_CAL_SHIFT;
+    adcTSCAL2 = *TEMPSENSOR_CAL2_ADDR >> VREFINT_CAL_SHIFT;
     adcTSSlopeK = (TEMPSENSOR_CAL2_TEMP - TEMPSENSOR_CAL1_TEMP) * 1000 / (adcTSCAL2 - adcTSCAL1);
 }
 
@@ -263,10 +298,10 @@ void adcInit(const adcConfig_t *config)
 
         if (i == ADC_TEMPSENSOR) {
             map = ADC_TAG_MAP_TEMPSENSOR;
-            dev = ADCDEV_3;
+            dev = ffs(adcTagMap[map].devices) - 1;
         } else if (i == ADC_VREFINT) {
             map = ADC_TAG_MAP_VREFINT;
-            dev = ADCDEV_3;
+            dev = ffs(adcTagMap[map].devices) - 1;
         } else {
             if (!adcOperatingConfig[i].tag) {
                 continue;
@@ -281,7 +316,7 @@ void adcInit(const adcConfig_t *config)
             // Find an ADC device that can handle this input pin
 
             for (dev = 0; dev < ADCDEV_COUNT; dev++) {
-                if (!adcDevice[dev].ADCx 
+                if (!adcDevice[dev].ADCx
 #ifndef USE_DMA_SPEC
                      || !adcDevice[dev].dmaResource
 #endif
@@ -314,6 +349,24 @@ void adcInit(const adcConfig_t *config)
         if (adcOperatingConfig[i].tag) {
             IOInit(IOGetByTag(adcOperatingConfig[i].tag), OWNER_ADC_BATT + i, 0);
             IOConfigGPIO(IOGetByTag(adcOperatingConfig[i].tag), IO_CONFIG(GPIO_MODE_ANALOG, 0, GPIO_NOPULL));
+        }
+    }
+
+    // DeInit ADCx with inputs
+    // We have to batch call DeInit() for all devices as DeInit() initializes ADCx_COMMON register.
+
+    for (int dev = 0; dev < ADCDEV_COUNT; dev++) {
+        adcDevice_t *adc = &adcDevice[dev];
+
+        if (!(adc->ADCx && adc->channelBits)) {
+            continue;
+        }
+
+        adc->ADCHandle.Instance = adc->ADCx;
+
+        if (HAL_ADC_DeInit(&adc->ADCHandle) != HAL_OK) { 
+            // ADC de-initialization Error
+            errorHandler();
         }
     }
 
@@ -366,11 +419,11 @@ void adcInit(const adcConfig_t *config)
             sConfig.Rank         = adcRegularRankMap[rank++];   /* Rank of sampled channel number ADCx_CHANNEL */
             sConfig.SamplingTime = ADC_SAMPLETIME_387CYCLES_5;  /* Sampling time (number of clock cycles unit) */
             sConfig.SingleDiff   = ADC_SINGLE_ENDED;            /* Single-ended input channel */
-            sConfig.OffsetNumber = ADC_OFFSET_NONE;             /* No offset subtraction */ 
+            sConfig.OffsetNumber = ADC_OFFSET_NONE;             /* No offset subtraction */
             sConfig.Offset = 0;                                 /* Parameter discarded because offset correction is disabled */
-  
+
             if (HAL_ADC_ConfigChannel(&adc->ADCHandle, &sConfig) != HAL_OK) {
-                Error_Handler();
+                errorHandler();
             }
         }
 
@@ -402,11 +455,13 @@ void adcInit(const adcConfig_t *config)
 
         // Deinitialize  & Initialize the DMA for new transfer
 
+        // dmaInit must be called before calling HAL_DMA_Init,
+        // to enable clock for associated DMA if not already done so.
+        dmaInit(dmaIdentifier, OWNER_ADC, RESOURCE_INDEX(dev));
+
         HAL_DMA_DeInit(&adc->DmaHandle);
         HAL_DMA_Init(&adc->DmaHandle);
 
-        dmaInit(dmaIdentifier, OWNER_ADC, RESOURCE_INDEX(dev));
-  
         // Associate the DMA handle
 
         __HAL_LINKDMA(&adc->ADCHandle, DMA_Handle, adc->DmaHandle);
@@ -419,7 +474,7 @@ void adcInit(const adcConfig_t *config)
         // NVIC configuration for DMA Input data interrupt
 
         HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 1, 0);
-        HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);  
+        HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
 #endif
     }
 
@@ -440,7 +495,7 @@ void adcInit(const adcConfig_t *config)
         // Start conversion in DMA mode
 
         if (HAL_ADC_Start_DMA(&adc->ADCHandle, (uint32_t *)&adcConversionBuffer[dmaBufferIndex], BITCOUNT(adc->channelBits)) != HAL_OK) {
-            Error_Handler();
+            errorHandler();
         }
 
         dmaBufferIndex += BITCOUNT(adc->channelBits);
@@ -453,7 +508,9 @@ void adcGetChannelValues(void)
     // Cache coherency should be maintained by MPU facility
 
     for (int i = 0; i < ADC_CHANNEL_INTERNAL; i++) {
-        adcValues[i] = adcConversionBuffer[adcOperatingConfig[i].dmaIndex];
+        if (adcOperatingConfig[i].enabled) {
+            adcValues[adcOperatingConfig[i].dmaIndex] = adcConversionBuffer[adcOperatingConfig[i].dmaIndex];
+        }
     }
 }
 
@@ -484,7 +541,7 @@ uint16_t adcInternalReadVrefint(void)
 
 uint16_t adcInternalReadTempsensor(void)
 {
-    uint16_t value = adcInternalRead(ADC_TEMPSENSOR); 
+    uint16_t value = adcInternalRead(ADC_TEMPSENSOR);
     return value;
 }
 #endif // USE_ADC_INTERNAL

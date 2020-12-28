@@ -154,8 +154,9 @@ bool bmp085Detect(const bmp085Config_t *config, baroDev_t *baro)
     bool ack;
     bool defaultAddressApplied = false;
 
-    if (bmp085InitDone)
+    if (bmp085InitDone) {
         return true;
+    }
 
     bmp085InitXclrIO(config);
     BMP085_ON;   // enable baro
@@ -166,7 +167,7 @@ bool bmp085Detect(const bmp085Config_t *config, baroDev_t *baro)
     eocIO = IOGetByTag(config->eocTag);
     IOInit(eocIO, OWNER_BARO_EOC, 0);
     EXTIHandlerInit(&exti, bmp085ExtiHandler);
-    EXTIConfig(eocIO, &exti, NVIC_PRIO_BARO_EXTI, IOCFG_IN_FLOATING, EXTI_TRIGGER_RISING);
+    EXTIConfig(eocIO, &exti, NVIC_PRIO_BARO_EXTI, IOCFG_IN_FLOATING, BETAFLIGHT_EXTI_TRIGGER_RISING);
     EXTIEnable(eocIO, true);
 #else
     UNUSED(config);
@@ -188,6 +189,8 @@ bool bmp085Detect(const bmp085Config_t *config, baroDev_t *baro)
         bmp085.oversampling_setting = 3;
 
         if (bmp085.chip_id == BMP085_CHIP_ID) { /* get bitslice */
+            busDeviceRegister(busdev);
+
             busReadRegisterBuffer(busdev, BMP085_VERSION_REG, &data, 1); /* read Version reg */
             bmp085.ml_version = BMP085_GET_BITSLICE(data, BMP085_ML_VERSION); /* get ML Version */
             bmp085.al_version = BMP085_GET_BITSLICE(data, BMP085_AL_VERSION); /* get AL Version */

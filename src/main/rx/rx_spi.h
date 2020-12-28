@@ -20,9 +20,12 @@
 
 #pragma once
 
+#include "drivers/exti.h"
+
 #include "pg/rx.h"
-#include "rx/rx.h"
 #include "pg/rx_spi.h"
+
+#include "rx/rx.h"
 
 // Used in MSP. Append at end.
 typedef enum {
@@ -42,6 +45,9 @@ typedef enum {
     RX_SPI_SFHSS,
     RX_SPI_CYRF6936_DSM,
     RX_SPI_FRSKY_X_LBT,
+    RX_SPI_REDPINE,
+    RX_SPI_FRSKY_X_V2,
+    RX_SPI_FRSKY_X_LBT_V2,
     RX_SPI_PROTOCOL_COUNT
 } rx_spi_protocol_e;
 
@@ -74,6 +80,11 @@ typedef enum {
     RC_SPI_AUX14
 } rc_spi_aetr_e;
 
+typedef struct {
+    ioConfig_t ioConfig;
+    extiTrigger_t trigger;
+} rxSpiExtiConfig_t;
+
 // RC channels as used by deviation
 #define RC_CHANNEL_RATE        RC_SPI_AUX1
 #define RC_CHANNEL_FLIP        RC_SPI_AUX2
@@ -82,4 +93,4 @@ typedef enum {
 #define RC_CHANNEL_HEADLESS    RC_SPI_AUX5
 #define RC_CHANNEL_RTH         RC_SPI_AUX6 // return to home
 
-bool rxSpiInit(const rxSpiConfig_t *rxSpiConfig, rxRuntimeConfig_t *rxRuntimeConfig);
+bool rxSpiInit(const rxSpiConfig_t *rxSpiConfig, rxRuntimeState_t *rxRuntimeState);

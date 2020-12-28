@@ -45,7 +45,7 @@
 #include "drivers/serial.h"
 #include "drivers/time.h"
 
-#include "fc/config.h"
+#include "config/config.h"
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
 
@@ -74,7 +74,7 @@
 #include "frsky_hub.h"
 
 static serialPort_t *frSkyHubPort = NULL;
-static serialPortConfig_t *portConfig = NULL;
+static const serialPortConfig_t *portConfig = NULL;
 
 #define FRSKY_HUB_BAUDRATE 9600
 #define FRSKY_HUB_INITIAL_PORT_MODE MODE_TX
@@ -289,13 +289,13 @@ static void sendSatalliteSignalQualityAsTemperature2(uint8_t cycleNum)
         satellite = constrain(gpsSol.hdop, 0, GPS_MAX_HDOP_VAL);
     }
     int16_t data;
-    if (telemetryConfig()->frsky_unit == FRSKY_UNIT_METRICS) {
-        data = satellite;
-    } else {
+    if (telemetryConfig()->frsky_unit == UNIT_IMPERIAL) {
         float tmp = (satellite - 32) / 1.8f;
         // Round the value
         tmp += (tmp < 0) ? -0.5f : 0.5f;
         data = tmp;
+    } else {
+        data = satellite;
     }
     frSkyHubWriteFrame(ID_TEMPRATURE2, data);
 }
@@ -494,7 +494,7 @@ static void configureFrSkyHubTelemetryPort(void)
 void checkFrSkyHubTelemetryState(void)
 {
     if (telemetryState == TELEMETRY_STATE_INITIALIZED_SERIAL) {
-        if (telemetryCheckRxPortShared(portConfig, rxRuntimeConfig.serialrxProvider)) {
+        if (telemetryCheckRxPortShared(portConfig, rxRuntimeState.serialrxProvider)) {
             if (frSkyHubPort == NULL && telemetrySharedPort != NULL) {
                 frSkyHubPort = telemetrySharedPort;
             }

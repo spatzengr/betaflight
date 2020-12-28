@@ -32,7 +32,7 @@ uint16_t flightModeFlags = 0;
 
 static uint32_t enabledSensors = 0;
 
-// Must be shorter than OSD_WARNINGS_MAX_SIZE (11) to be displayed fully in OSD
+// Must be no longer than OSD_WARNINGS_MAX_SIZE (11) to be displayed fully in OSD
 const char *armingDisableFlagNames[]= {
     "NOGYRO",
     "FAILSAFE",
@@ -57,6 +57,8 @@ const char *armingDisableFlagNames[]= {
     "RPMFILTER",
     "REBOOT_REQD",
     "DSHOT_BBANG",
+    "NO_ACC_CAL",
+    "MOTOR_PROTO",
     "ARMSWITCH",
 };
 

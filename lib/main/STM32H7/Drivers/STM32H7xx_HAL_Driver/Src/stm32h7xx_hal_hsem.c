@@ -101,6 +101,10 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 #if defined(DUAL_CORE)
+/** @defgroup HSEM_Private_Constants  HSEM Private Constants
+  * @{
+  */
+
 #ifndef HSEM_R_MASTERID
 #define HSEM_R_MASTERID HSEM_R_COREID
 #endif
@@ -112,6 +116,10 @@
 #ifndef HSEM_CR_MASTERID
 #define HSEM_CR_MASTERID HSEM_CR_COREID
 #endif
+
+/**
+  * @}
+  */  
 #endif /* DUAL_CORE */
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -233,7 +241,11 @@ void  HAL_HSEM_Release(uint32_t SemID, uint32_t ProcessID)
   assert_param(IS_HSEM_PROCESSID(ProcessID));
 
   /* Clear the semaphore by writing to the R register : the MasterID , the processID and take bit = 0  */
+#if  USE_MULTI_CORE_SHARED_CODE != 0U
+  HSEM->R[SemID] = (ProcessID | ((HAL_GetCurrentCPUID() << POSITION_VAL(HSEM_R_MASTERID)) & HSEM_R_MASTERID));
+#else
   HSEM->R[SemID] = (ProcessID | HSEM_CR_COREID_CURRENT);
+#endif
 
 }
 

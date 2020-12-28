@@ -16,7 +16,7 @@
 #
 
 # The target to build, see VALID_TARGETS below
-TARGET    ?= OMNIBUSF4
+TARGET    ?= STM32F405
 
 # Compile-time options
 OPTIONS   ?=
@@ -108,11 +108,14 @@ FEATURE_CUT_LEVEL_SUPPLIED := $(FEATURE_CUT_LEVEL)
 FEATURE_CUT_LEVEL =
 
 # The list of targets to build for 'pre-push'
-PRE_PUSH_TARGET_LIST ?= OMNIBUSF4 STM32F405 SPRACINGF7DUAL STM32F7X2 SITL test-representative
+PRE_PUSH_TARGET_LIST ?= STM32F405 STM32F411 STM32F7X2 STM32F745 NUCLEOH743 SITL STM32F4DISCOVERY_DEBUG test-representative
 
 include $(ROOT)/make/targets.mk
 
+REVISION := norevision
+ifeq ($(shell git diff --shortstat),)
 REVISION := $(shell git log -1 --format="%h")
+endif
 
 FC_VER_MAJOR := $(shell grep " FC_VERSION_MAJOR" src/main/build/version.h | awk '{print $$3}' )
 FC_VER_MINOR := $(shell grep " FC_VERSION_MINOR" src/main/build/version.h | awk '{print $$3}' )
@@ -162,15 +165,15 @@ include $(ROOT)/make/mcu/$(TARGET_MCU).mk
 include $(ROOT)/make/openocd.mk
 
 # Configure default flash sizes for the targets (largest size specified gets hit first) if flash not specified already.
-ifeq ($(FLASH_SIZE),)
-ifneq ($(TARGET_FLASH),)
-FLASH_SIZE := $(TARGET_FLASH)
+ifeq ($(TARGET_FLASH_SIZE),)
+ifneq ($(MCU_FLASH_SIZE),)
+TARGET_FLASH_SIZE := $(MCU_FLASH_SIZE)
 else
-$(error FLASH_SIZE not configured for target $(TARGET))
+$(error MCU_FLASH_SIZE not configured for target $(TARGET))
 endif
 endif
 
-DEVICE_FLAGS  := $(DEVICE_FLAGS) -DFLASH_SIZE=$(FLASH_SIZE)
+DEVICE_FLAGS  := $(DEVICE_FLAGS) -DTARGET_FLASH_SIZE=$(TARGET_FLASH_SIZE)
 
 ifneq ($(HSE_VALUE),)
 DEVICE_FLAGS  := $(DEVICE_FLAGS) -DHSE_VALUE=$(HSE_VALUE)
@@ -225,6 +228,7 @@ CROSS_GDB   := $(ARM_SDK_PREFIX)gdb
 OBJCOPY     := $(ARM_SDK_PREFIX)objcopy
 OBJDUMP     := $(ARM_SDK_PREFIX)objdump
 SIZE        := $(ARM_SDK_PREFIX)size
+DFUSE-PACK  := src/utils/dfuse-pack.py
 
 #
 # Tool options.
@@ -234,6 +238,11 @@ CC_DEFAULT_OPTIMISATION := $(OPTIMISATION_BASE) $(OPTIMISE_DEFAULT)
 CC_SPEED_OPTIMISATION   := $(OPTIMISATION_BASE) $(OPTIMISE_SPEED)
 CC_SIZE_OPTIMISATION    := $(OPTIMISATION_BASE) $(OPTIMISE_SIZE)
 CC_NO_OPTIMISATION      := 
+
+#
+# Added after GCC version update, remove once the warnings have been fixed
+#
+TEMPORARY_FLAGS :=
 
 CFLAGS     += $(ARCH_FLAGS) \
               $(addprefix -D,$(OPTIONS)) \
@@ -245,6 +254,7 @@ CFLAGS     += $(ARCH_FLAGS) \
               -fdata-sections \
               -fno-common \
               -pedantic \
+              $(TEMPORARY_FLAGS) \
               $(DEVICE_FLAGS) \
               -D_GNU_SOURCE \
               -DUSE_STDPERIPH_DRIVER \
@@ -291,12 +301,16 @@ CPPCHECK        = cppcheck $(CSOURCES) --enable=all --platform=unix64 \
                   $(addprefix -I,$(INCLUDE_DIRS)) \
                   -I/usr/include -I/usr/include/linux
 
+
+TARGET_BASENAME = $(BIN_DIR)/$(FORKNAME)_$(FC_VER)_$(TARGET)_$(REVISION)
+
 #
 # Things we will build
 #
-TARGET_S19      = $(BIN_DIR)/$(FORKNAME)_$(FC_VER)_$(TARGET).s19
-TARGET_BIN      = $(BIN_DIR)/$(FORKNAME)_$(FC_VER)_$(TARGET).bin
-TARGET_HEX      = $(BIN_DIR)/$(FORKNAME)_$(FC_VER)_$(TARGET).hex
+TARGET_BIN      = $(TARGET_BASENAME).bin
+TARGET_HEX      = $(TARGET_BASENAME).hex
+TARGET_DFU      = $(TARGET_BASENAME).dfu
+TARGET_ZIP      = $(TARGET_BASENAME).zip
 TARGET_ELF      = $(OBJECT_DIR)/$(FORKNAME)_$(TARGET).elf
 TARGET_EXST_ELF = $(OBJECT_DIR)/$(FORKNAME)_$(TARGET)_EXST.elf
 TARGET_UNPATCHED_BIN = $(OBJECT_DIR)/$(FORKNAME)_$(TARGET)_UNPATCHED.bin
@@ -311,6 +325,7 @@ CLEAN_ARTIFACTS := $(TARGET_BIN)
 CLEAN_ARTIFACTS += $(TARGET_HEX)
 CLEAN_ARTIFACTS += $(TARGET_ELF) $(TARGET_OBJS) $(TARGET_MAP)
 CLEAN_ARTIFACTS += $(TARGET_LST)
+CLEAN_ARTIFACTS += $(TARGET_DFU)
 
 # Make sure build date and revision is updated on every incremental build
 $(OBJECT_DIR)/$(TARGET)/build/version.o : $(SRC)
@@ -321,11 +336,6 @@ $(OBJECT_DIR)/$(TARGET)/build/version.o : $(SRC)
 $(TARGET_LST): $(TARGET_ELF)
 	$(V0) $(OBJDUMP) -S --disassemble $< > $@
 
-
-$(TARGET_S19): $(TARGET_ELF)
-	@echo "Creating srec/S19 $(TARGET_S19)" "$(STDOUT)"
-	$(V1) $(OBJCOPY) --output-target=srec $(TARGET_S19)
-
 ifeq ($(EXST),no)
 $(TARGET_BIN): $(TARGET_ELF)
 	@echo "Creating BIN $(TARGET_BIN)" "$(STDOUT)"
@@ -334,6 +344,10 @@ $(TARGET_BIN): $(TARGET_ELF)
 $(TARGET_HEX): $(TARGET_ELF)
 	@echo "Creating HEX $(TARGET_HEX)" "$(STDOUT)"
 	$(V1) $(OBJCOPY) -O ihex --set-start 0x8000000 $< $@
+
+$(TARGET_DFU): $(TARGET_HEX)
+	@echo "Creating DFU $(TARGET_DFU)" "$(STDOUT)"
+	$(V1) $(PYTHON) $(DFUSE-PACK) -i $< $@
 
 else
 CLEAN_ARTIFACTS += $(TARGET_UNPATCHED_BIN) $(TARGET_EXST_HASH_SECTION_FILE) $(TARGET_EXST_ELF)
@@ -430,11 +444,20 @@ $(OBJECT_DIR)/$(TARGET)/%.o: %.S
 	$(V1) $(CROSS_CC) -c -o $@ $(ASFLAGS) $<
 
 
-## all               : Build all targets (excluding unsupported)
-all: $(SUPPORTED_TARGETS)
+## all               : Build all currently built targets
+all: $(CI_TARGETS)
 
-## all_with_unsupported : Build all targets (including unsupported)
-all_with_unsupported: $(VALID_TARGETS)
+## all_all : Build all targets (including legacy / unsupported)
+all_all: $(VALID_TARGETS)
+
+## unified : build all Unified Targets
+unified: $(UNIFIED_TARGETS)
+
+## unified_zip : build all Unified Targets as zip files (for posting on GitHub)
+unified_zip: $(addsuffix _clean,$(UNIFIED_TARGETS)) $(addsuffix _zip,$(UNIFIED_TARGETS))
+
+## legacy : Build legacy targets
+legacy: $(LEGACY_TARGETS)
 
 ## unsupported : Build unsupported targets
 unsupported: $(UNSUPPORTED_TARGETS)
@@ -443,22 +466,13 @@ unsupported: $(UNSUPPORTED_TARGETS)
 pre-push:
 	$(MAKE) $(addsuffix _clean,$(PRE_PUSH_TARGET_LIST)) $(PRE_PUSH_TARGET_LIST) EXTRA_FLAGS=-Werror
 
-## official          : Build all official (travis) targets
-official: $(OFFICIAL_TARGETS)
-
 ## targets-group-1   : build some targets
 targets-group-1: $(GROUP_1_TARGETS)
 
 ## targets-group-2   : build some targets
 targets-group-2: $(GROUP_2_TARGETS)
 
-## targets-group-3   : build some targets
-targets-group-3: $(GROUP_3_TARGETS)
-
-## targets-group-3   : build some targets
-targets-group-4: $(GROUP_4_TARGETS)
-
-## targets-group-rest: build the rest of the targets (not listed in group 1, 2 or 3)
+## targets-group-rest: build the rest of the targets (not listed in the other groups)
 targets-group-rest: $(GROUP_OTHER_TARGETS)
 
 $(VALID_TARGETS):
@@ -469,7 +483,7 @@ $(VALID_TARGETS):
 $(NOBUILD_TARGETS):
 	$(MAKE) TARGET=$@
 
-TARGETS_CLEAN = $(addsuffix _clean,$(VALID_TARGETS) )
+TARGETS_CLEAN = $(addsuffix _clean,$(VALID_TARGETS))
 
 ## clean             : clean up temporary / machine-generated files
 clean:
@@ -492,11 +506,11 @@ $(TARGETS_CLEAN):
 ## clean_all         : clean all valid targets
 clean_all: $(TARGETS_CLEAN) test_clean
 
-TARGETS_FLASH = $(addsuffix _flash,$(VALID_TARGETS) )
+TARGETS_FLASH = $(addsuffix _flash,$(VALID_TARGETS))
 
 ## <TARGET>_flash    : build and flash a target
 $(TARGETS_FLASH):
-	$(V0) $(MAKE) binary hex TARGET=$(subst _flash,,$@)
+	$(V0) $(MAKE) hex TARGET=$(subst _flash,,$@)
 ifneq (,$(findstring /dev/ttyUSB,$(SERIAL_DEVICE)))
 	$(V0) $(MAKE) tty_flash TARGET=$(subst _flash,,$@)
 else
@@ -516,7 +530,8 @@ ifneq (no-port-found,$(SERIAL_DEVICE))
 	$(V0) echo -n 'R' > $(SERIAL_DEVICE)
 	$(V0) sleep 1
 endif
-	$(V0) dfu-util -a 0 -D $(TARGET_BIN) -s 0x08000000:leave
+	$(V0) $(MAKE) $(TARGET_DFU)
+	$(V0) dfu-util -a 0 -D $(TARGET_DFU) -s :leave
 
 st-flash_$(TARGET): $(TARGET_BIN)
 	$(V0) st-flash --reset write $< 0x08000000
@@ -529,11 +544,18 @@ openocd-gdb: $(TARGET_ELF)
 	$(V0) $(OPENOCD_COMMAND) & $(CROSS_GDB) $(TARGET_ELF) -ex "target remote localhost:3333" -ex "load"
 endif
 
+TARGETS_ZIP = $(addsuffix _zip,$(VALID_TARGETS))
+
+## <TARGET>_zip    : build target and zip it (useful for posting to GitHub)
+$(TARGETS_ZIP):
+	$(V0) $(MAKE) hex TARGET=$(subst _zip,,$@)
+	$(V0) $(MAKE) zip TARGET=$(subst _zip,,$@)
+
+zip:
+	$(V0) zip $(TARGET_ZIP) $(TARGET_HEX)
+
 binary:
 	$(V0) $(MAKE) -j $(TARGET_BIN)
-
-srec:
-	$(V0) $(MAKE) -j $(TARGET_S19)
 
 hex:
 	$(V0) $(MAKE) -j $(TARGET_HEX)
@@ -583,22 +605,20 @@ help: Makefile make/tools.mk
 ## targets           : print a list of all valid target platforms (for consumption by scripts)
 targets:
 	@echo "Valid targets:       $(VALID_TARGETS)"
-	@echo "Supported targets:   $(SUPPORTED_TARGETS)"
+	@echo "Built targets:       $(CI_TARGETS)"
+	@echo "Unified targets:     $(UNIFIED_TARGETS)"
+	@echo "Legacy targets:      $(LEGACY_TARGETS)"
 	@echo "Unsupported targets: $(UNSUPPORTED_TARGETS)"
 	@echo "Target:              $(TARGET)"
 	@echo "Base target:         $(BASE_TARGET)"
 	@echo "targets-group-1:     $(GROUP_1_TARGETS)"
 	@echo "targets-group-2:     $(GROUP_2_TARGETS)"
-	@echo "targets-group-3:     $(GROUP_3_TARGETS)"
-	@echo "targets-group-4:     $(GROUP_4_TARGETS)"
 	@echo "targets-group-rest:  $(GROUP_OTHER_TARGETS)"
 
 	@echo "targets-group-1:     $(words $(GROUP_1_TARGETS)) targets"
 	@echo "targets-group-2:     $(words $(GROUP_2_TARGETS)) targets"
-	@echo "targets-group-3:     $(words $(GROUP_3_TARGETS)) targets"
-	@echo "targets-group-4:     $(words $(GROUP_4_TARGETS)) targets"
 	@echo "targets-group-rest:  $(words $(GROUP_OTHER_TARGETS)) targets"
-	@echo "total in all groups  $(words $(SUPPORTED_TARGETS)) targets"
+	@echo "total in all groups  $(words $(CI_TARGETS)) targets"
 
 ## target-mcu        : print the MCU type of the target
 target-mcu:
@@ -606,7 +626,7 @@ target-mcu:
 
 ## targets-by-mcu    : make all targets that have a MCU_TYPE mcu
 targets-by-mcu:
-	$(V1) for target in $(VALID_TARGETS); do \
+	$(V1) for target in $${TARGETS}; do \
 		TARGET_MCU_TYPE=$$($(MAKE) -s TARGET=$${target} target-mcu); \
 		if [ "$${TARGET_MCU_TYPE}" = "$${MCU_TYPE}" ]; then \
 			if [ "$${DO_BUILD}" = 1 ]; then \
@@ -625,24 +645,30 @@ targets-by-mcu:
 
 ## targets-f3        : make all F3 targets
 targets-f3:
-	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F3 DO_BUILD=1
+	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F3 TARGETS="$(VALID_TARGETS)" DO_BUILD=1
 
 targets-f3-print:
-	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F3
+	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F3 TARGETS="$(VALID_TARGETS)"
 
 ## targets-f4        : make all F4 targets
 targets-f4:
-	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F4 DO_BUILD=1
+	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F4 TARGETS="$(VALID_TARGETS)" DO_BUILD=1
 
 targets-f4-print:
-	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F4
+	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F4 TARGETS="$(VALID_TARGETS)"
+
+targets-ci-f4-print:
+	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F4 TARGETS="$(CI_TARGETS)"
 
 ## targets-f7        : make all F7 targets
 targets-f7:
-	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F7 DO_BUILD=1
+	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F7 TARGETS="$(VALID_TARGETS)" DO_BUILD=1
 
 targets-f7-print:
-	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F7
+	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F7 TARGETS="$(VALID_TARGETS)"
+
+targets-ci-f7-print:
+	$(V1) $(MAKE) -s targets-by-mcu MCU_TYPE=STM32F7 TARGETS="$(CI_TARGETS)"
 
 ## test              : run the Betaflight test suite
 ## junittest         : run the Betaflight test suite, producing Junit XML result files.
@@ -654,6 +680,10 @@ test junittest test-all test-representative:
 ## test_help         : print the help message for the test suite (including a list of the available tests)
 test_help:
 	$(V0) cd src/test && $(MAKE) help
+
+## test_versions         : print the compiler versions used for the test suite
+test_versions:
+	$(V0) cd src/test && $(MAKE) versions
 
 ## test_%            : run test 'test_%' from the test suite
 test_%:

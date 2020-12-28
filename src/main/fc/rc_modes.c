@@ -24,21 +24,25 @@
 
 #include "platform.h"
 
-#include "rc_modes.h"
-
 #include "common/bitarray.h"
 #include "common/maths.h"
+
 #include "drivers/time.h"
 
+#include "config/config.h"
 #include "config/feature.h"
+
+#include "fc/rc_controls.h"
+
+#include "io/piniobox.h"
+
 #include "pg/pg.h"
 #include "pg/pg_ids.h"
 #include "pg/rx.h"
 
-#include "fc/config.h"
-#include "fc/rc_controls.h"
-
 #include "rx/rx.h"
+
+#include "rc_modes.h"
 
 #define STICKY_MODE_BOOT_DELAY_US 5e6
 
@@ -53,6 +57,17 @@ static int activeLinkedMacCount = 0;
 static uint8_t activeLinkedMacArray[MAX_MODE_ACTIVATION_CONDITION_COUNT];
 
 PG_REGISTER_ARRAY(modeActivationCondition_t, MAX_MODE_ACTIVATION_CONDITION_COUNT, modeActivationConditions, PG_MODE_ACTIVATION_PROFILE, 2);
+
+#if defined(USE_CUSTOM_BOX_NAMES)
+PG_REGISTER_WITH_RESET_TEMPLATE(modeActivationConfig_t, modeActivationConfig, PG_MODE_ACTIVATION_CONFIG, 0);
+
+PG_RESET_TEMPLATE(modeActivationConfig_t, modeActivationConfig,
+    .box_user_1_name = { 0 },
+    .box_user_2_name = { 0 },
+    .box_user_3_name = { 0 },
+    .box_user_4_name = { 0 },
+);
+#endif
 
 bool IS_RC_MODE_ACTIVE(boxId_e boxId)
 {
@@ -80,7 +95,7 @@ bool isRangeActive(uint8_t auxChannelIndex, const channelRange_t *range) {
 
 /*
  *  updateMasksForMac:
- * 
+ *
  *  The following are the possible logic states at each MAC update:
  *      AND     NEW
  *      ---     ---
@@ -93,7 +108,7 @@ void updateMasksForMac(const modeActivationCondition_t *mac, boxBitmask_t *andMa
 {
     if (bitArrayGet(andMask, mac->modeId) || !bitArrayGet(newMask, mac->modeId)) {
         bool bAnd = mac->modeLogic == MODELOGIC_AND;
-        
+
         if (!bAnd) {    // OR mac
             if (bActive) {
                 bitArrayClr(andMask, mac->modeId);
@@ -238,4 +253,7 @@ void analyzeModeActivationConditions(void)
             activeMacArray[activeMacCount++] = i;
         }
     }
+#ifdef USE_PINIOBOX
+    pinioBoxTaskControl();
+#endif
 }

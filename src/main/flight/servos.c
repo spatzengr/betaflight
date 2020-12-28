@@ -32,15 +32,12 @@
 #include "common/filter.h"
 #include "common/maths.h"
 
+#include "config/config.h"
 #include "config/config_reset.h"
 #include "config/feature.h"
-#include "pg/pg.h"
-#include "pg/pg_ids.h"
-#include "pg/rx.h"
 
 #include "drivers/pwm_output.h"
 
-#include "fc/config.h"
 #include "fc/rc_controls.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
@@ -52,10 +49,12 @@
 
 #include "io/gimbal.h"
 
+#include "pg/pg.h"
+#include "pg/pg_ids.h"
+#include "pg/rx.h"
+
 #include "rx/rx.h"
 
-
-extern mixerMode_e currentMixerMode;
 
 PG_REGISTER_WITH_RESET_FN(servoConfig_t, servoConfig, PG_SERVO_CONFIG, 0);
 
@@ -202,7 +201,7 @@ int16_t determineServoMiddleOrForwardFromChannel(servoIndex_e servoIndex)
 {
     const uint8_t channelToForwardFrom = servoParams(servoIndex)->forwardFromChannel;
 
-    if (channelToForwardFrom != CHANNEL_FORWARDING_DISABLED && channelToForwardFrom < rxRuntimeConfig.channelCount) {
+    if (channelToForwardFrom != CHANNEL_FORWARDING_DISABLED && channelToForwardFrom < rxRuntimeState.channelCount) {
         return rcData[channelToForwardFrom];
     }
 
@@ -216,25 +215,6 @@ int servoDirection(int servoIndex, int inputSource)
         return -1;
     } else {
         return 1;
-    }
-}
-
-void servosInit(void)
-{
-    // enable servos for mixes that require them. note, this shifts motor counts.
-    useServo = mixers[currentMixerMode].useServo;
-    // if we want camstab/trig, that also enables servos, even if mixer doesn't
-    if (featureIsEnabled(FEATURE_SERVO_TILT) || featureIsEnabled(FEATURE_CHANNEL_FORWARDING)) {
-        useServo = 1;
-    }
-
-    // give all servos a default command
-    for (uint8_t i = 0; i < MAX_SUPPORTED_SERVOS; i++) {
-        servo[i] = DEFAULT_SERVO_MIDDLE;
-    }
-
-    if (mixerIsTricopter()) {
-        servosTricopterInit();
     }
 }
 
@@ -255,33 +235,48 @@ void loadCustomServoMixer(void)
     }
 }
 
-void servoConfigureOutput(void)
+static void servoConfigureOutput(void)
 {
     if (useServo) {
-        servoRuleCount = servoMixers[currentMixerMode].servoRuleCount;
-        if (servoMixers[currentMixerMode].rule) {
+        servoRuleCount = servoMixers[getMixerMode()].servoRuleCount;
+        if (servoMixers[getMixerMode()].rule) {
             for (int i = 0; i < servoRuleCount; i++)
-                currentServoMixer[i] = servoMixers[currentMixerMode].rule[i];
+                currentServoMixer[i] = servoMixers[getMixerMode()].rule[i];
         }
     }
 
-    // set flag that we're on something with wings
-    if (currentMixerMode == MIXER_FLYING_WING ||
-        currentMixerMode == MIXER_AIRPLANE ||
-        currentMixerMode == MIXER_CUSTOM_AIRPLANE
-    ) {
-        ENABLE_STATE(FIXED_WING);
-        if (currentMixerMode == MIXER_CUSTOM_AIRPLANE) {
-            loadCustomServoMixer();
-        }
-    } else {
-        DISABLE_STATE(FIXED_WING);
-        if (currentMixerMode == MIXER_CUSTOM_TRI) {
-            loadCustomServoMixer();
-        }
+    switch (getMixerMode()) {
+    case MIXER_CUSTOM_AIRPLANE:
+    case MIXER_CUSTOM_TRI:
+        loadCustomServoMixer();
+
+        break;
+    default:
+        break;
     }
 }
 
+
+void servosInit(void)
+{
+    // enable servos for mixes that require them. note, this shifts motor counts.
+    useServo = mixers[getMixerMode()].useServo;
+    // if we want camstab/trig, that also enables servos, even if mixer doesn't
+    if (featureIsEnabled(FEATURE_SERVO_TILT) || featureIsEnabled(FEATURE_CHANNEL_FORWARDING)) {
+        useServo = 1;
+    }
+
+    // give all servos a default command
+    for (uint8_t i = 0; i < MAX_SUPPORTED_SERVOS; i++) {
+        servo[i] = DEFAULT_SERVO_MIDDLE;
+    }
+
+    if (mixerIsTricopter()) {
+        servosTricopterInit();
+    }
+
+    servoConfigureOutput();
+}
 
 void servoMixerLoadMix(int index)
 {
@@ -333,7 +328,7 @@ void writeServos(void)
     filterServos();
 
     uint8_t servoIndex = 0;
-    switch (currentMixerMode) {
+    switch (getMixerMode()) {
     case MIXER_TRI:
     case MIXER_CUSTOM_TRI:
         // We move servo if unarmed flag set or armed
@@ -385,7 +380,7 @@ void writeServos(void)
     }
 
     // Two servos for SERVO_TILT, if enabled
-    if (featureIsEnabled(FEATURE_SERVO_TILT) || currentMixerMode == MIXER_GIMBAL) {
+    if (featureIsEnabled(FEATURE_SERVO_TILT) || getMixerMode() == MIXER_GIMBAL) {
         updateGimbalServos(servoIndex);
         servoIndex += 2;
     }
@@ -486,7 +481,7 @@ void servoMixer(void)
 static void servoTable(void)
 {
     // airplane / servo mixes
-    switch (currentMixerMode) {
+    switch (getMixerMode()) {
     case MIXER_CUSTOM_TRI:
     case MIXER_TRI:
         servosTricopterMixer();

@@ -148,16 +148,18 @@ const timerHardware_t fullTimerHardware[FULL_TIMER_CHANNEL_COUNT] = {
     DEF_TIM(TIM14, CH1N, PF9, TIM_USE_ANY, 0, 0, 0),
 
 // Port H
-    DEF_TIM(TIM12, CH1, PH6, TIM_USE_ANY, 0, 0, 0),
-    DEF_TIM(TIM12, CH2, PH9, TIM_USE_ANY, 0, 0, 0),
-    DEF_TIM(TIM5, CH1, PH10, TIM_USE_ANY, 0, 0, 0),
-    DEF_TIM(TIM5, CH2, PH11, TIM_USE_ANY, 0, 0, 0),
-    DEF_TIM(TIM5, CH3, PH12, TIM_USE_ANY, 0, 0, 0),
-    DEF_TIM(TIM8, CH1N, PH13, TIM_USE_ANY, 0, 0, 0),
-    DEF_TIM(TIM8, CH2N, PH14, TIM_USE_ANY, 0, 0, 0),
-    DEF_TIM(TIM8, CH3N, PH15, TIM_USE_ANY, 0, 0, 0),
+// Port H is not available for LPQFP-100 or 144 and TFBGA-100 package
+//    DEF_TIM(TIM12, CH1, PH6, TIM_USE_ANY, 0, 0, 0),
+//    DEF_TIM(TIM12, CH2, PH9, TIM_USE_ANY, 0, 0, 0),
+//    DEF_TIM(TIM5, CH1, PH10, TIM_USE_ANY, 0, 0, 0),
+//    DEF_TIM(TIM5, CH2, PH11, TIM_USE_ANY, 0, 0, 0),
+//    DEF_TIM(TIM5, CH3, PH12, TIM_USE_ANY, 0, 0, 0),
+//    DEF_TIM(TIM8, CH1N, PH13, TIM_USE_ANY, 0, 0, 0),
+//    DEF_TIM(TIM8, CH2N, PH14, TIM_USE_ANY, 0, 0, 0),
+//    DEF_TIM(TIM8, CH3N, PH15, TIM_USE_ANY, 0, 0, 0),
 };
 #endif
+
 
 uint32_t timerClock(TIM_TypeDef *tim)
 {
@@ -166,16 +168,27 @@ uint32_t timerClock(TIM_TypeDef *tim)
     uint32_t ppre;
 
     // Implement the table:
-    // RM0433 "Table 48. Ratio between clock timer and pclk"
+    // RM0433 (Rev 6) Table 52.
+    // RM0455 (Rev 3) Table 55.
+    // "Ratio between clock timer and pclk"
+    // (Tables are the same, just D2 or CD difference)
+
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx)
+#define PERIPH_PRESCALER(bus) ((RCC->D2CFGR & RCC_D2CFGR_D2PPRE ## bus) >> RCC_D2CFGR_D2PPRE ## bus ## _Pos)
+#elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
+#define PERIPH_PRESCALER(bus) ((RCC->CDCFGR2 & RCC_CDCFGR2_CDPPRE ## bus) >> RCC_CDCFGR2_CDPPRE ## bus ## _Pos)
+#else
+#error Unknown MCU type
+#endif
 
     if (tim == TIM1 || tim == TIM8 || tim == TIM15 || tim == TIM16 || tim == TIM17) {
         // Timers on APB2
         pclk = HAL_RCC_GetPCLK2Freq();
-        ppre = (RCC->D2CFGR & RCC_D2CFGR_D2PPRE2) >> RCC_D2CFGR_D2PPRE2_Pos;
+        ppre = PERIPH_PRESCALER(2);
     } else {
         // Timers on APB1
         pclk = HAL_RCC_GetPCLK1Freq();
-        ppre = (RCC->D2CFGR & RCC_D2CFGR_D2PPRE1) >> RCC_D2CFGR_D2PPRE1_Pos;
+        ppre = PERIPH_PRESCALER(1);
     }
 
     timpre = (RCC->CFGR & RCC_CFGR_TIMPRE) ? 1 : 0;
@@ -188,5 +201,7 @@ uint32_t timerClock(TIM_TypeDef *tim)
     };
 
     return pclk * periphToKernel[index];
+
+#undef PERIPH_PRESCALER
 }
 #endif

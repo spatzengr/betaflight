@@ -28,8 +28,8 @@
 #include "config_helper.h"
 
 #include "io/serial.h"
+
 #include "osd/osd.h"
-#include "pg/pg.h"
 
 static targetSerialPortFunction_t targetSerialPortFunction[] = {
     { SERIAL_PORT_USART1, FUNCTION_MSP },

@@ -27,12 +27,8 @@
 
 typedef enum BlackboxDevice {
     BLACKBOX_DEVICE_NONE = 0,
-#ifdef USE_FLASHFS
     BLACKBOX_DEVICE_FLASH = 1,
-#endif
-#ifdef USE_SDCARD
     BLACKBOX_DEVICE_SDCARD = 2,
-#endif
     BLACKBOX_DEVICE_SERIAL = 3
 } BlackboxDevice_e;
 
@@ -42,18 +38,30 @@ typedef enum BlackboxMode {
     BLACKBOX_MODE_ALWAYS_ON
 } BlackboxMode;
 
+typedef enum BlackboxSampleRate { // Sample rate is 1/(2^BlackboxSampleRate)
+    BLACKBOX_RATE_ONE = 0,
+    BLACKBOX_RATE_HALF,
+    BLACKBOX_RATE_QUARTER,
+    BLACKBOX_RATE_8TH,
+    BLACKBOX_RATE_16TH
+} BlackboxSampleRate_e;
+
 typedef enum FlightLogEvent {
     FLIGHT_LOG_EVENT_SYNC_BEEP = 0,
+    FLIGHT_LOG_EVENT_AUTOTUNE_CYCLE_START = 10,   // UNUSED
+    FLIGHT_LOG_EVENT_AUTOTUNE_CYCLE_RESULT = 11,  // UNUSED
+    FLIGHT_LOG_EVENT_AUTOTUNE_TARGETS = 12,       // UNUSED
     FLIGHT_LOG_EVENT_INFLIGHT_ADJUSTMENT = 13,
     FLIGHT_LOG_EVENT_LOGGING_RESUME = 14,
+    FLIGHT_LOG_EVENT_DISARM = 15,
     FLIGHT_LOG_EVENT_FLIGHTMODE = 30, // Add new event type for flight mode status.
     FLIGHT_LOG_EVENT_LOG_END = 255
 } FlightLogEvent;
 
 typedef struct blackboxConfig_s {
-    uint16_t p_ratio; // I-frame interval / P-frame interval
+    uint8_t sample_rate; // sample rate
     uint8_t device;
-    uint8_t record_acc;
+    uint32_t fields_disabled_mask;
     uint8_t mode;
 } blackboxConfig_t;
 
@@ -67,6 +75,8 @@ void blackboxUpdate(timeUs_t currentTimeUs);
 void blackboxSetStartDateTime(const char *dateTime, timeMs_t timeNowMs);
 int blackboxCalculatePDenom(int rateNum, int rateDenom);
 uint8_t blackboxGetRateDenom(void);
+uint16_t blackboxGetPRatio(void);
+uint8_t blackboxCalculateSampleRate(uint16_t pRatio);
 void blackboxValidateConfig(void);
 void blackboxFinish(void);
 bool blackboxMayEditConfig(void);

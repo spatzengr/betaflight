@@ -57,15 +57,18 @@ typedef enum {
     DSHOT_CMD_LED3_OFF, // BLHeli32 only
     DSHOT_CMD_AUDIO_STREAM_MODE_ON_OFF = 30, // KISS audio Stream mode on/Off
     DSHOT_CMD_SILENT_MODE_ON_OFF = 31, // KISS silent Mode on/Off
-    DSHOT_CMD_SIGNAL_LINE_TELEMETRY_DISABLE = 32,
-    DSHOT_CMD_SIGNAL_LINE_CONTINUOUS_ERPM_TELEMETRY = 33,
     DSHOT_CMD_MAX = 47
 } dshotCommands_e;
 
-void dshotCommandWrite(uint8_t index, uint8_t motorCount, uint8_t command, bool blocking);
+typedef enum {
+    DSHOT_CMD_TYPE_INLINE = 0,    // dshot commands sent inline with motor signal (motors must be enabled)
+    DSHOT_CMD_TYPE_BLOCKING       // dshot commands sent in blocking method (motors must be disabled)
+} dshotCommandType_e;
+
+void dshotCommandWrite(uint8_t index, uint8_t motorCount, uint8_t command, dshotCommandType_e commandType);
 void dshotSetPidLoopTime(uint32_t pidLoopTime);
 bool dshotCommandQueueEmpty(void);
 bool dshotCommandIsProcessing(void);
 uint8_t dshotCommandGetCurrent(uint8_t index);
 bool dshotCommandOutputIsEnabled(uint8_t motorCount);
-bool dshotCommandsAreEnabled(void);
+bool dshotStreamingCommandsAreEnabled(void);

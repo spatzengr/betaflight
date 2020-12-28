@@ -39,20 +39,41 @@ typedef enum FlightLogFieldCondition {
     FLIGHT_LOG_FIELD_CONDITION_RANGEFINDER,
     FLIGHT_LOG_FIELD_CONDITION_RSSI,
 
+    FLIGHT_LOG_FIELD_CONDITION_PID,
     FLIGHT_LOG_FIELD_CONDITION_NONZERO_PID_D_0,
     FLIGHT_LOG_FIELD_CONDITION_NONZERO_PID_D_1,
     FLIGHT_LOG_FIELD_CONDITION_NONZERO_PID_D_2,
 
+    FLIGHT_LOG_FIELD_CONDITION_RC_COMMANDS,
+    FLIGHT_LOG_FIELD_CONDITION_SETPOINT,
+
     FLIGHT_LOG_FIELD_CONDITION_NOT_LOGGING_EVERY_FRAME,
 
+    FLIGHT_LOG_FIELD_CONDITION_GYRO,
     FLIGHT_LOG_FIELD_CONDITION_ACC,
-    FLIGHT_LOG_FIELD_CONDITION_DEBUG,
+    FLIGHT_LOG_FIELD_CONDITION_DEBUG_LOG,
 
     FLIGHT_LOG_FIELD_CONDITION_NEVER,
 
     FLIGHT_LOG_FIELD_CONDITION_FIRST = FLIGHT_LOG_FIELD_CONDITION_ALWAYS,
     FLIGHT_LOG_FIELD_CONDITION_LAST = FLIGHT_LOG_FIELD_CONDITION_NEVER
 } FlightLogFieldCondition;
+
+typedef enum FlightLogFieldSelect_e { // no more than 32
+    FLIGHT_LOG_FIELD_SELECT_PID = 0,
+    FLIGHT_LOG_FIELD_SELECT_RC_COMMANDS,
+    FLIGHT_LOG_FIELD_SELECT_SETPOINT,
+    FLIGHT_LOG_FIELD_SELECT_BATTERY,
+    FLIGHT_LOG_FIELD_SELECT_MAG,
+    FLIGHT_LOG_FIELD_SELECT_ALTITUDE,
+    FLIGHT_LOG_FIELD_SELECT_RSSI,
+    FLIGHT_LOG_FIELD_SELECT_GYRO,
+    FLIGHT_LOG_FIELD_SELECT_ACC,
+    FLIGHT_LOG_FIELD_SELECT_DEBUG_LOG,
+    FLIGHT_LOG_FIELD_SELECT_MOTOR,
+    FLIGHT_LOG_FIELD_SELECT_GPS,
+    FLIGHT_LOG_FIELD_SELECT_COUNT
+} FlightLogFieldSelect_e;
 
 typedef enum FlightLogFieldPredictor {
     //No prediction:
@@ -113,6 +134,10 @@ typedef struct flightLogEvent_syncBeep_s {
     uint32_t time;
 } flightLogEvent_syncBeep_t;
 
+typedef struct flightLogEvent_disarm_s {
+    uint32_t reason;
+} flightLogEvent_disarm_t;
+
 typedef struct flightLogEvent_flightMode_s { // New Event Data type
     uint32_t flags;
     uint32_t lastFlags;
@@ -135,6 +160,7 @@ typedef struct flightLogEvent_loggingResume_s {
 typedef union flightLogEventData_u {
     flightLogEvent_syncBeep_t syncBeep;
     flightLogEvent_flightMode_t flightMode; // New event data
+    flightLogEvent_disarm_t disarm;
     flightLogEvent_inflightAdjustment_t inflightAdjustment;
     flightLogEvent_loggingResume_t loggingResume;
 } flightLogEventData_t;

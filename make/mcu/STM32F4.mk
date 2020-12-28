@@ -45,12 +45,12 @@ endif
 
 ifeq ($(TARGET),$(filter $(TARGET), $(F411_TARGETS)))
 EXCLUDES        += stm32f4xx_fsmc.c
-TARGET_FLASH    := 512
+MCU_FLASH_SIZE  := 512
 else ifeq ($(TARGET),$(filter $(TARGET), $(F446_TARGETS)))
 EXCLUDES        += stm32f4xx_fsmc.c
-TARGET_FLASH    := 512
+MCU_FLASH_SIZE  := 512
 else
-TARGET_FLASH    := 1024
+MCU_FLASH_SIZE  := 1024
 endif
 
 STDPERIPH_SRC   := $(filter-out ${EXCLUDES}, $(STDPERIPH_SRC))
@@ -208,6 +208,7 @@ VCP_SRC = \
 endif
 
 MSC_SRC = \
+            drivers/usb_msc_common.c \
             drivers/usb_msc_f4xx.c \
             msc/usbd_msc_desc.c \
             msc/usbd_storage.c

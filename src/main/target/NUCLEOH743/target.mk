@@ -1,9 +1,11 @@
 H743xI_TARGETS += $(TARGET)
 
-FEATURES       += VCP ONBOARDFLASH SDCARD_SDIO
 
 ifeq ($(TARGET), NUCLEOH743_RAMBASED)
+FEATURES       += VCP ONBOARDFLASH
 RAM_BASED = yes
+else
+FEATURES       += VCP ONBOARDFLASH SDCARD_SDIO
 endif
 
 # Top level Makefile adds, if not defined, HSE_VALUE, as default for F4 targets.
@@ -23,6 +25,7 @@ TARGET_SRC = \
             drivers/accgyro/accgyro_spi_mpu6000.c \
             drivers/accgyro/accgyro_spi_mpu6500.c \
             drivers/accgyro/accgyro_spi_mpu9250.c \
+            drivers/accgyro/accgyro_spi_icm42605.c \
             drivers/accgyro/accgyro_mpu6050.c \
             drivers/barometer/barometer_bmp085.c \
             drivers/barometer/barometer_bmp280.c \
@@ -30,7 +33,3 @@ TARGET_SRC = \
             drivers/barometer/barometer_ms5611.c \
             drivers/compass/compass_hmc5883l.c \
             drivers/max7456.c \
-
-#            drivers/accgyro/accgyro_fake.c \
-#            drivers/barometer/barometer_fake.c \
-#            drivers/compass/compass_fake.c \

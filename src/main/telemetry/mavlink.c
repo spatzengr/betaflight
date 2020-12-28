@@ -44,7 +44,7 @@
 #include "drivers/sensor.h"
 #include "drivers/time.h"
 
-#include "fc/config.h"
+#include "config/config.h"
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
 
@@ -58,7 +58,6 @@
 #include "io/gimbal.h"
 #include "io/gps.h"
 #include "io/ledstrip.h"
-#include "io/motors.h"
 
 #include "rx/rx.h"
 
@@ -86,7 +85,7 @@
 extern uint16_t rssi; // FIXME dependency on mw.c
 
 static serialPort_t *mavlinkPort = NULL;
-static serialPortConfig_t *portConfig;
+static const serialPortConfig_t *portConfig;
 
 static bool mavlinkTelemetryEnabled =  false;
 static portSharing_e mavlinkPortSharing;
@@ -183,7 +182,7 @@ void configureMAVLinkTelemetryPort(void)
 
 void checkMAVLinkTelemetryState(void)
 {
-    if (portConfig && telemetryCheckRxPortShared(portConfig, rxRuntimeConfig.serialrxProvider)) {
+    if (portConfig && telemetryCheckRxPortShared(portConfig, rxRuntimeState.serialrxProvider)) {
         if (!mavlinkTelemetryEnabled && telemetrySharedPort != NULL) {
             mavlinkPort = telemetrySharedPort;
             mavlinkTelemetryEnabled = true;
@@ -276,21 +275,21 @@ void mavlinkSendRCChannelsAndRSSI(void)
         // port Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows to encode more than 8 servos.
         0,
         // chan1_raw RC channel 1 value, in microseconds
-        (rxRuntimeConfig.channelCount >= 1) ? rcData[0] : 0,
+        (rxRuntimeState.channelCount >= 1) ? rcData[0] : 0,
         // chan2_raw RC channel 2 value, in microseconds
-        (rxRuntimeConfig.channelCount >= 2) ? rcData[1] : 0,
+        (rxRuntimeState.channelCount >= 2) ? rcData[1] : 0,
         // chan3_raw RC channel 3 value, in microseconds
-        (rxRuntimeConfig.channelCount >= 3) ? rcData[2] : 0,
+        (rxRuntimeState.channelCount >= 3) ? rcData[2] : 0,
         // chan4_raw RC channel 4 value, in microseconds
-        (rxRuntimeConfig.channelCount >= 4) ? rcData[3] : 0,
+        (rxRuntimeState.channelCount >= 4) ? rcData[3] : 0,
         // chan5_raw RC channel 5 value, in microseconds
-        (rxRuntimeConfig.channelCount >= 5) ? rcData[4] : 0,
+        (rxRuntimeState.channelCount >= 5) ? rcData[4] : 0,
         // chan6_raw RC channel 6 value, in microseconds
-        (rxRuntimeConfig.channelCount >= 6) ? rcData[5] : 0,
+        (rxRuntimeState.channelCount >= 6) ? rcData[5] : 0,
         // chan7_raw RC channel 7 value, in microseconds
-        (rxRuntimeConfig.channelCount >= 7) ? rcData[6] : 0,
+        (rxRuntimeState.channelCount >= 7) ? rcData[6] : 0,
         // chan8_raw RC channel 8 value, in microseconds
-        (rxRuntimeConfig.channelCount >= 8) ? rcData[7] : 0,
+        (rxRuntimeState.channelCount >= 8) ? rcData[7] : 0,
         // rssi Receive signal strength indicator, 0: 0%, 255: 100%
         constrain(scaleRange(getRssi(), 0, RSSI_MAX_VALUE, 0, 255), 0, 255));
     msgLength = mavlink_msg_to_send_buffer(mavBuffer, &mavMsg);
@@ -353,11 +352,7 @@ void mavlinkSendPosition(void)
         // alt Altitude in 1E3 meters (millimeters) above MSL
         gpsSol.llh.altCm * 10,
         // relative_alt Altitude above ground in meters, expressed as * 1000 (millimeters)
-#if defined(USE_BARO) || defined(USE_RANGEFINDER)
-        (sensors(SENSOR_RANGEFINDER) || sensors(SENSOR_BARO)) ? getEstimatedAltitudeCm() * 10 : gpsSol.llh.altCm * 10,
-#else
-        gpsSol.llh.altCm * 10,
-#endif
+        getEstimatedAltitudeCm() * 10,
         // Ground X Speed (Latitude), expressed as m/s * 100
         0,
         // Ground Y Speed (Longitude), expressed as m/s * 100
@@ -419,24 +414,7 @@ void mavlinkSendHUDAndHeartbeat(void)
     }
 #endif
 
-    // select best source for altitude
-#if defined(USE_BARO) || defined(USE_RANGEFINDER)
-    if (sensors(SENSOR_RANGEFINDER) || sensors(SENSOR_BARO)) {
-        // Baro or sonar generally is a better estimate of altitude than GPS MSL altitude
-        mavAltitude = getEstimatedAltitudeCm() / 100.0;
-    }
-#if defined(USE_GPS)
-    else if (sensors(SENSOR_GPS)) {
-        // No sonar or baro, just display altitude above MLS
-        mavAltitude = gpsSol.llh.altCm / 100.0;
-    }
-#endif
-#elif defined(USE_GPS)
-    if (sensors(SENSOR_GPS)) {
-        // No sonar or baro, just display altitude above MLS
-        mavAltitude = gpsSol.llh.altCm / 100.0;
-    }
-#endif
+    mavAltitude = getEstimatedAltitudeCm() / 100.0;
 
     mavlink_msg_vfr_hud_pack(0, 200, &mavMsg,
         // airspeed Current airspeed in m/s

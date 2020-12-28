@@ -33,7 +33,7 @@
 #define SPI_IO_AF_SCK_CFG       IO_CONFIG(GPIO_Mode_AF,  GPIO_Speed_50MHz, GPIO_OType_PP, GPIO_PuPd_DOWN)
 #define SPI_IO_AF_MISO_CFG      IO_CONFIG(GPIO_Mode_AF,  GPIO_Speed_50MHz, GPIO_OType_PP, GPIO_PuPd_UP)
 #define SPI_IO_CS_CFG           IO_CONFIG(GPIO_Mode_OUT, GPIO_Speed_50MHz, GPIO_OType_PP, GPIO_PuPd_NOPULL)
-#elif defined(STM32F7) || defined(STM32H7)
+#elif defined(STM32F7) || defined(STM32H7) || defined(STM32G4)
 #define SPI_IO_AF_CFG           IO_CONFIG(GPIO_MODE_AF_PP, GPIO_SPEED_FREQ_VERY_HIGH, GPIO_NOPULL)
 #define SPI_IO_AF_SCK_CFG_HIGH  IO_CONFIG(GPIO_MODE_AF_PP, GPIO_SPEED_FREQ_VERY_HIGH, GPIO_PULLUP)
 #define SPI_IO_AF_SCK_CFG_LOW   IO_CONFIG(GPIO_MODE_AF_PP, GPIO_SPEED_FREQ_VERY_HIGH, GPIO_PULLDOWN)
@@ -46,38 +46,9 @@
 #define SPI_IO_CS_CFG           IO_CONFIG(GPIO_Mode_Out_PP,      GPIO_Speed_50MHz)
 #endif
 
-/*
-  Flash M25p16 tolerates 20mhz, SPI_CLOCK_FAST should sit around 20 or less.
-*/
-typedef enum {
-    SPI_CLOCK_INITIALIZATION = 256,
-#if defined(STM32F4)
-    SPI_CLOCK_SLOW          = 128, //00.65625 MHz
-    SPI_CLOCK_STANDARD      = 8,   //10.50000 MHz
-    SPI_CLOCK_FAST          = 4,   //21.00000 MHz
-    SPI_CLOCK_ULTRAFAST     = 2    //42.00000 MHz
-#elif defined(STM32F7)
-    SPI_CLOCK_SLOW          = 256, //00.42188 MHz
-    SPI_CLOCK_STANDARD      = 16,  //06.57500 MHz
-    SPI_CLOCK_FAST          = 8,   //13.50000 MHz
-    SPI_CLOCK_ULTRAFAST     = 2    //54.00000 MHz
-#elif defined(STM32H7)
-    // spi_ker_ck = 100MHz
-    SPI_CLOCK_SLOW          = 128, //00.78125 MHz
-    SPI_CLOCK_STANDARD      = 8,  //12.00000 MHz
-    SPI_CLOCK_FAST          = 4,   //25.00000 MHz
-    SPI_CLOCK_ULTRAFAST     = 2    //50.00000 MHz
-#else
-    SPI_CLOCK_SLOW          = 128, //00.56250 MHz
-    SPI_CLOCK_STANDARD      = 4,   //09.00000 MHz
-    SPI_CLOCK_FAST          = 2,   //18.00000 MHz
-    SPI_CLOCK_ULTRAFAST     = 2    //18.00000 MHz
-#endif
-} SPIClockDivider_e;
-
 // De facto standard mode
 // See https://en.wikipedia.org/wiki/Serial_Peripheral_Interface
-// 
+//
 // Mode CPOL CPHA
 //  0    0    0
 //  1    0    1
@@ -122,7 +93,7 @@ void spiPreinitRegister(ioTag_t iotag, uint8_t iocfg, uint8_t init);
 void spiPreinitByIO(IO_t io);
 void spiPreinitByTag(ioTag_t tag);
 
-bool spiInit(SPIDevice device);
+bool spiInit(SPIDevice device, bool leadingEdge);
 void spiSetDivisor(SPI_TypeDef *instance, uint16_t divisor);
 uint8_t spiTransferByte(SPI_TypeDef *instance, uint8_t data);
 bool spiIsBusBusy(SPI_TypeDef *instance);
@@ -154,9 +125,10 @@ void spiBusWriteRegisterBuffer(const busDevice_t *bus, uint8_t reg, const uint8_
 uint8_t spiBusRawReadRegister(const busDevice_t *bus, uint8_t reg);
 uint8_t spiBusReadRegister(const busDevice_t *bus, uint8_t reg);
 void spiBusSetInstance(busDevice_t *bus, SPI_TypeDef *instance);
-void spiBusSetDivisor(busDevice_t *bus, SPIClockDivider_e divider);
+uint16_t spiCalculateDivider(uint32_t freq);
+void spiBusSetDivisor(busDevice_t *bus, uint16_t divider);
 
-void spiBusTransactionInit(busDevice_t *bus, SPIMode_e mode, SPIClockDivider_e divider);
+void spiBusTransactionInit(busDevice_t *bus, SPIMode_e mode, uint16_t divider);
 void spiBusTransactionSetup(const busDevice_t *bus);
 void spiBusTransactionBegin(const busDevice_t *bus);
 void spiBusTransactionEnd(const busDevice_t *bus);
@@ -171,3 +143,5 @@ bool spiBusTransactionTransfer(const busDevice_t *bus, const uint8_t *txData, ui
 
 struct spiPinConfig_s;
 void spiPinConfigure(const struct spiPinConfig_s *pConfig);
+void spiBusDeviceRegister(const busDevice_t *bus);
+uint8_t spiGetRegisteredDeviceCount(void);

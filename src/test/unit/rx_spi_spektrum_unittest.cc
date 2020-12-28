@@ -44,12 +44,13 @@ extern "C" {
     #define IS_DSMX(x) (!IS_DSM2(x))
 
     typedef enum {
-        DSM_RECEIVER_BIND = 0x0,
-        DSM_RECEIVER_SYNC_A = 0x1,
-        DSM_RECEIVER_SYNC_B = 0x2,
-        DSM_RECEIVER_RECV = 0x3,
+        DSM_RECEIVER_BIND = 0,
+        DSM_RECEIVER_BIND2,
+        DSM_RECEIVER_SYNC_A,
+        DSM_RECEIVER_SYNC_B,
+        DSM_RECEIVER_RECV,
     #ifdef USE_RX_SPEKTRUM_TELEMETRY
-        DSM_RECEIVER_TLM = 0x4,
+        DSM_RECEIVER_TLM,
     #endif
     } dsm_receiver_status_e;
 
@@ -75,6 +76,8 @@ extern "C" {
         uint32_t timeout;
         uint32_t timeLastPacket;
 
+        uint16_t bindPackets;
+
     #ifdef USE_RX_SPEKTRUM_TELEMETRY
         uint32_t timeLastTelemetry;
         bool sendTelemetry;
@@ -85,7 +88,8 @@ extern "C" {
     extern bool isError = false;
 
     static const dsmReceiver_t empty = dsmReceiver_t();
-    static rxRuntimeConfig_t config = rxRuntimeConfig_t();
+    static rxRuntimeState_t config = rxRuntimeState_t();
+    static rxSpiExtiConfig_t extiConfig;
     static uint8_t packetLen;
     static uint8_t packet[16];
     static uint16_t rssi = 0;
@@ -142,7 +146,7 @@ extern "C" {
 TEST(RxSpiSpektrumUnitTest, TestInitUnbound)
 {
     dsmReceiver = empty;
-    spektrumSpiInit(&injectedConfig, &config);
+    spektrumSpiInit(&injectedConfig, &config, &extiConfig);
     EXPECT_FALSE(dsmReceiver.bound);
     EXPECT_EQ(DSM_RECEIVER_BIND, dsmReceiver.status);
     EXPECT_EQ(DSM_INITIAL_BIND_CHANNEL, dsmReceiver.rfChannel);
@@ -160,7 +164,7 @@ TEST(RxSpiSpektrumUnitTest, TestInitBound)
 
     spektrumConfigMutable()->protocol = DSMX_11;
 
-    bool result = spektrumSpiInit(&injectedConfig, &config);
+    bool result = spektrumSpiInit(&injectedConfig, &config, &extiConfig);
 
     EXPECT_TRUE(result);
     EXPECT_TRUE(dsmReceiver.bound);
@@ -180,7 +184,7 @@ TEST(RxSpiSpektrumUnitTest, TestInitBound)
     dsmReceiver = empty;
     spektrumConfigMutable()->protocol = DSM2_11;
 
-    spektrumSpiInit(&injectedConfig, &config);
+    spektrumSpiInit(&injectedConfig, &config, &extiConfig);
 
     EXPECT_TRUE(dsmReceiver.bound);
     EXPECT_EQ(DSM2_11, dsmReceiver.protocol);
@@ -374,6 +378,7 @@ extern "C" {
     void cyrf6936SetSopCode(const uint8_t ) {}
     void cyrf6936SetDataCode(const uint8_t ) {}
     void cyrf6936StartRecv(void) {}
+    void cyrf6936SendLen(uint8_t *, const uint8_t ) {}
     void cyrf6936RecvLen(uint8_t *data, const uint8_t length)
     {
         if (length == packetLen) {
@@ -388,8 +393,9 @@ extern "C" {
     void rxSpiCommonIOInit(const rxSpiConfig_t *) {}
     void rxSpiLedBlinkRxLoss(rx_spi_received_e ) {}
     void rxSpiLedBlinkBind(void) {};
-    bool rxSpiCheckBindRequested(bool )
+    bool rxSpiCheckBindRequested(bool)
     {
         return false;
     }
+    bool rxSpiExtiConfigured(void) { return true; }
 }

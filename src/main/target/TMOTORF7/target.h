@@ -30,7 +30,7 @@
 #define BEEPER_PIN              PC13
 #define BEEPER_INVERTED
 
-#define ENABLE_DSHOT_DMAR       false
+#define ENABLE_DSHOT_DMAR       DSHOT_DMAR_OFF
 
 #define USE_EXTI
 #define USE_GYRO_EXTI
@@ -62,8 +62,6 @@
 #define USE_MAX7456
 #define MAX7456_SPI_INSTANCE    SPI2
 #define MAX7456_SPI_CS_PIN      SPI2_NSS_PIN
-#define MAX7456_SPI_CLK         ( SPI_CLOCK_STANDARD )
-#define MAX7456_RESTORE_CLK     ( SPI_CLOCK_FAST )
 
 #define USE_FLASHFS
 #define USE_FLASH_M25P16

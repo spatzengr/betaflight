@@ -29,12 +29,15 @@
 #define LED1_PIN                PB7 // PE1 on NUCLEO-H743ZI2 (may collide with UART8_TX)
 //#define LED2_PIN                PB14 // SDMMC2_D0
 
+// Use explicit cache management as per https://github.com/betaflight/betaflight/pull/10378
+#define USE_LEDSTRIP_CACHE_MGMT
+
 // Nucleo-H743 has one button (The blue USER button).
 // Force two buttons to look at the single button so config reset on button works
 #define USE_BUTTONS
-#define	BUTTON_A_PIN            PC13
+#define BUTTON_A_PIN            PC13
 #define BUTTON_A_PIN_INVERTED // Active high
-#define	BUTTON_B_PIN            PC13
+#define BUTTON_B_PIN            PC13
 #define BUTTON_B_PIN_INVERTED // Active high
 
 #define USE_BEEPER
@@ -52,8 +55,8 @@
 #define UART2_TX_PIN            PD5
 
 #define USE_UART3
-#define UART3_RX_PIN            PD9
-#define UART3_TX_PIN            PD8
+#define UART3_RX_PIN            PD9  // ST-LINK Virtual COM Port
+#define UART3_TX_PIN            PD8  // ST-LINK Virtual COM Port
 
 #define USE_UART4
 #define UART4_RX_PIN            PC11
@@ -75,12 +78,16 @@
 #define UART8_RX_PIN            PE0
 #define UART8_TX_PIN            PE1
 
+#define USE_UART9 // LPUART1
+#define UART9_RX_PIN            PB7 // PA10 (Shared with UART1)
+#define UART9_TX_PIN            PB6 // PA9 (Shared with UART1)
+
 #define USE_VCP
 
 #define USE_SOFTSERIAL1
 #define USE_SOFTSERIAL2
 
-#define SERIAL_PORT_COUNT       11
+#define SERIAL_PORT_COUNT       12
 
 #define USE_SPI
 
@@ -168,6 +175,12 @@
 #define I2C1_SDA                PB9
 #define I2C_DEVICE (I2CDEV_1)
 
+// For testing I2C4on APB4
+//#define USE_I2C_DEVICE_4
+//#define I2C4_SCL                PF14
+//#define I2C4_SDA                PF15
+//#define I2C_DEVICE (I2CDEV_4)
+
 #define USE_MAG
 #define USE_MAG_HMC5883
 #define USE_MAG_SPI_HMC5883
@@ -196,6 +209,8 @@
 #define USE_ACC_SPI_MPU6500
 #define USE_GYRO_SPI_MPU9250
 #define USE_ACC_SPI_MPU9250
+#define USE_GYRO_SPI_ICM42605
+#define USE_ACC_SPI_ICM42605
 
 #define GYRO_1_CS_PIN           PD15
 #define GYRO_1_SPI_INSTANCE     SPI1

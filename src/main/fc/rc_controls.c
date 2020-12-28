@@ -37,7 +37,7 @@
 
 #include "drivers/camera_control.h"
 
-#include "fc/config.h"
+#include "config/config.h"
 #include "fc/core.h"
 #include "fc/rc.h"
 #include "fc/runtime_config.h"
@@ -46,9 +46,9 @@
 #include "flight/failsafe.h"
 
 #include "io/beeper.h"
+#include "io/usb_cdc_hid.h"
 #include "io/dashboard.h"
 #include "io/gps.h"
-#include "io/motors.h"
 #include "io/vtx_control.h"
 
 #include "pg/pg.h"
@@ -62,8 +62,8 @@
 #include "sensors/acceleration.h"
 #include "sensors/barometer.h"
 #include "sensors/battery.h"
+#include "sensors/compass.h"
 #include "sensors/gyro.h"
-#include "sensors/sensors.h"
 
 #include "rc_controls.h"
 
@@ -157,8 +157,8 @@ void processRcStickPositions()
         }
     }
     if (stTmp == rcSticks) {
-        if (rcDelayMs <= INT16_MAX - (getTaskDeltaTime(TASK_SELF) / 1000)) {
-            rcDelayMs += getTaskDeltaTime(TASK_SELF) / 1000;
+        if (rcDelayMs <= INT16_MAX - (getTaskDeltaTimeUs(TASK_SELF) / 1000)) {
+            rcDelayMs += getTaskDeltaTimeUs(TASK_SELF) / 1000;
         }
     } else {
         rcDelayMs = 0;
@@ -179,7 +179,7 @@ void processRcStickPositions()
             if (ARMING_FLAG(ARMED) && rxIsReceivingSignal() && !failsafeIsActive()  ) {
                 rcDisarmTicks++;
                 if (rcDisarmTicks > 3) {
-                    disarm();
+                    disarm(DISARM_REASON_SWITCH);
                 }
             }
         }
@@ -189,7 +189,7 @@ void processRcStickPositions()
             // Disarm on throttle down + yaw
             resetTryingToArm();
             if (ARMING_FLAG(ARMED))
-                disarm();
+                disarm(DISARM_REASON_STICKS);
             else {
                 beeper(BEEPER_DISARM_REPEAT);     // sound tone while stick held
                 repeatAfter(STICK_AUTOREPEAT_MS); // disarm tone will repeat
@@ -205,7 +205,7 @@ void processRcStickPositions()
             }
         }
         return;
-    } else if (rcSticks == THR_LO + YAW_HI + PIT_CE + ROL_CE) {
+    } else if (rcSticks == THR_LO + YAW_HI + PIT_CE + ROL_CE && !IS_RC_MODE_ACTIVE(BOXSTICKCOMMANDDISABLE)) { // disable stick arming if STICK COMMAND DISABLE SW is active
         if (rcDelayMs >= ARM_DELAY_MS && !doNotRepeat) {
             doNotRepeat = true;
             if (!ARMING_FLAG(ARMED)) {
@@ -229,6 +229,13 @@ void processRcStickPositions()
     }
     doNotRepeat = true;
 
+    #ifdef USE_USB_CDC_HID
+    // If this target is used as a joystick, we should leave here.
+    if (cdcDeviceIsMayBeActive() || IS_RC_MODE_ACTIVE(BOXSTICKCOMMANDDISABLE)) {
+        return;
+    }
+    #endif
+
     // actions during not armed
 
     if (rcSticks == THR_LO + YAW_LO + PIT_LO + ROL_CE) {
@@ -242,8 +249,9 @@ void processRcStickPositions()
 #endif
 
 #ifdef USE_BARO
-        if (sensors(SENSOR_BARO))
-            baroSetCalibrationCycles(10); // calibrate baro to new ground level (10 * 25 ms = ~250 ms non blocking)
+        if (sensors(SENSOR_BARO)) {
+            baroSetGroundLevel();
+        }
 #endif
 
         return;
@@ -278,16 +286,19 @@ void processRcStickPositions()
 #ifdef USE_ACC
     if (rcSticks == THR_HI + YAW_LO + PIT_LO + ROL_CE) {
         // Calibrating Acc
-        accSetCalibrationCycles(CALIBRATING_ACC_CYCLES);
+        accStartCalibration();
         return;
     }
 #endif
 
+#if defined(USE_MAG)
     if (rcSticks == THR_HI + YAW_HI + PIT_LO + ROL_CE) {
         // Calibrating Mag
-        ENABLE_STATE(CALIBRATE_MAG);
+        compassStartCalibration();
+
         return;
     }
+#endif
 
 
     if (FLIGHT_MODE(ANGLE_MODE|HORIZON_MODE)) {
@@ -396,5 +407,5 @@ int32_t getRcStickDeflection(int32_t axis, uint16_t midrc) {
 void rcControlsInit(void)
 {
     analyzeModeActivationConditions();
-    isUsingSticksToArm = !isModeActivationConditionPresent(BOXARM);
+    isUsingSticksToArm = !isModeActivationConditionPresent(BOXARM) && systemConfig()->enableStickArming;
 }

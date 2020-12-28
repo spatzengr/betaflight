@@ -39,6 +39,8 @@ typedef enum
     OME_UINT8,
     OME_UINT16,
     OME_INT16,
+    OME_UINT32,
+    OME_INT32,
     OME_String,
     OME_FLOAT, //only up to 255 value and cant be 2.55 or 25.5, just for PID's
     //wlasciwosci elementow
@@ -54,15 +56,15 @@ typedef enum
     OME_MAX = OME_MENU
 } OSD_MenuElement;
 
-typedef long (*CMSEntryFuncPtr)(displayPort_t *displayPort, const void *ptr);
+typedef const void *(*CMSEntryFuncPtr)(displayPort_t *displayPort, const void *ptr);
 
 typedef struct
 {
-    const char * const text;
-    const OSD_MenuElement type;
-    const CMSEntryFuncPtr func;
+    const char * text;
+    OSD_MenuElement type;
+    CMSEntryFuncPtr func;
     void *data;
-    const uint8_t flags;
+    uint8_t flags;
 } __attribute__((packed)) OSD_Entry;
 
 // Bits in flags
@@ -71,6 +73,7 @@ typedef struct
 #define DYNAMIC        0x04  // Value should be updated dynamically
 #define OPTSTRING      0x08  // (Temporary) Flag for OME_Submenu, indicating func should be called to get a string to display.
 #define REBOOT_REQUIRED 0x10 // Reboot is required if the value is changed
+#define SCROLLING_TICKER 0x20// Long values are displayed as horizontally scrolling tickers (OME_TAB only)
 
 #define IS_PRINTVALUE(x) ((x) & PRINT_VALUE)
 #define SET_PRINTVALUE(x) do { (x) |= PRINT_VALUE; } while (0)
@@ -82,10 +85,15 @@ typedef struct
 
 #define IS_DYNAMIC(p) ((p)->flags & DYNAMIC)
 
-typedef long (*CMSMenuFuncPtr)(void);
+#define IS_SCROLLINGTICKER(x) ((x) & SCROLLING_TICKER)
+#define SET_SCROLLINGTICKER(x) do { (x) |= SCROLLING_TICKER; } while (0)
+#define CLR_SCROLLINGTICKER(x) do { (x) &= ~SCROLLING_TICKER; } while (0)
+
+typedef const void *(*CMSMenuFuncPtr)(displayPort_t *pDisp);
 
 // Special return value(s) for function chaining by CMSMenuFuncPtr
-#define MENU_CHAIN_BACK  (-1) // Causes automatic cmsMenuBack
+extern int menuChainBack;
+#define MENU_CHAIN_BACK  (&menuChainBack) // Causes automatic cmsMenuBack
 
 /*
 onExit function is called with self:
@@ -94,7 +102,9 @@ onExit function is called with self:
 (2) NULL if called from menu exit (forced exit at top level).
 */
 
-typedef long (*CMSMenuOnExitPtr)(const OSD_Entry *self);
+typedef const void *(*CMSMenuOnExitPtr)(displayPort_t *pDisp, const OSD_Entry *self);
+
+typedef const void *(*CMSMenuOnDisplayUpdatePtr)(displayPort_t *pDisp, const OSD_Entry *selected);
 
 typedef struct
 {
@@ -105,6 +115,7 @@ typedef struct
 #endif
     const CMSMenuFuncPtr onEnter;
     const CMSMenuOnExitPtr onExit;
+    const CMSMenuOnDisplayUpdatePtr onDisplayUpdate;
     const OSD_Entry *entries;
 } CMS_Menu;
 
@@ -142,6 +153,22 @@ typedef struct
 
 typedef struct
 {
+    int32_t *val;
+    int32_t min;
+    int32_t max;
+    int32_t step;
+} OSD_INT32_t;
+
+typedef struct
+{
+    uint32_t *val;
+    uint32_t min;
+    uint32_t max;
+    uint32_t step;
+} OSD_UINT32_t;
+
+typedef struct
+{
     uint8_t *val;
     uint8_t min;
     uint8_t max;
@@ -160,7 +187,3 @@ typedef struct
 {
     char *val;
 } OSD_String_t;
-
-// This is a function used in the func member if the type is OME_Submenu.
-
-typedef char * (*CMSMenuOptFuncPtr)(void);

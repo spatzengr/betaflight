@@ -37,6 +37,9 @@
 #pragma GCC diagnostic warning "-Wpadded"
 #endif
 
+#define GYRO_SCALE_2000DPS (2000.0f / (1 << 15))   // 16.384 dps/lsb scalefactor for 2000dps sensors
+#define GYRO_SCALE_4000DPS (4000.0f / (1 << 15))   //  8.192 dps/lsb scalefactor for 4000dps sensors
+
 typedef enum {
     GYRO_NONE = 0,
     GYRO_DEFAULT,
@@ -52,27 +55,26 @@ typedef enum {
     GYRO_ICM20608G,
     GYRO_ICM20649,
     GYRO_ICM20689,
+    GYRO_ICM42605,
     GYRO_BMI160,
+    GYRO_BMI270,
+    GYRO_LSM6DSO,
     GYRO_FAKE
 } gyroHardware_e;
 
 typedef enum {
     GYRO_HARDWARE_LPF_NORMAL,
-    GYRO_HARDWARE_LPF_1KHZ_SAMPLE,
 #ifdef USE_GYRO_DLPF_EXPERIMENTAL
     GYRO_HARDWARE_LPF_EXPERIMENTAL
 #endif
 } gyroHardwareLpf_e;
 
 typedef enum {
-    GYRO_32KHZ_HARDWARE_LPF_NORMAL,
-    GYRO_32KHZ_HARDWARE_LPF_EXPERIMENTAL
-} gyro32khzHardwareLpf;
-
-typedef enum {
     GYRO_RATE_1_kHz,
     GYRO_RATE_1100_Hz,
     GYRO_RATE_3200_Hz,
+    GYRO_RATE_6400_Hz,
+    GYRO_RATE_6664_Hz,
     GYRO_RATE_8_kHz,
     GYRO_RATE_9_kHz,
     GYRO_RATE_32_kHz,
@@ -105,6 +107,8 @@ typedef struct gyroDev_s {
     uint8_t gyroHasOverflowProtection;
     gyroHardware_e gyroHardware;
     fp_rotationMatrix_t rotationMatrix;
+    uint16_t gyroSampleRateHz;
+    uint16_t accSampleRateHz;
 } gyroDev_t;
 
 typedef struct accDev_s {

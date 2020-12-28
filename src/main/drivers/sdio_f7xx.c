@@ -316,7 +316,7 @@ static SD_Error_t SD_CmdResponse(uint8_t SD_CMD, int8_t ResponseType)
 
     if(ResponseType <= 0)
     {
-        if(TimeOut == 0){
+        if (TimeOut == 0) {
             return SD_CMD_RSP_TIMEOUT;
         } else {
             return SD_OK;
@@ -1640,6 +1640,8 @@ bool SD_GetState(void)
 bool SD_Init(void)
 {
     SD_Error_t ErrorState;
+
+    __HAL_RCC_SDMMC1_CLK_ENABLE();
 
     // Initialize SDMMC1 peripheral interface with default configuration for SD card initialization
     MODIFY_REG(SDMMC1->CLKCR, CLKCR_CLEAR_MASK, (uint32_t) SDMMC_INIT_CLK_DIV);

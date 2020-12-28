@@ -45,17 +45,19 @@ static int srxlScreenSize(const displayPort_t *displayPort)
     return displayPort->rows * displayPort->cols;
 }
 
-static int srxlWriteChar(displayPort_t *displayPort, uint8_t col, uint8_t row, uint8_t c)
+static int srxlWriteChar(displayPort_t *displayPort, uint8_t col, uint8_t row, uint8_t attr, uint8_t c)
 {
-    return (spektrumTmTextGenPutChar(col, row, c));
     UNUSED(displayPort);
+    UNUSED(attr);
+
+    return (spektrumTmTextGenPutChar(col, row, c));
 }
 
 
-static int srxlWriteString(displayPort_t *displayPort, uint8_t col, uint8_t row, const char *s)
+static int srxlWriteString(displayPort_t *displayPort, uint8_t col, uint8_t row, uint8_t attr, const char *s)
 {
     while (*s) {
-        srxlWriteChar(displayPort, col++, row, *(s++));
+        srxlWriteChar(displayPort, col++, row, attr, *(s++));
     }
     return 0;
 }
@@ -64,15 +66,15 @@ static int srxlClearScreen(displayPort_t *displayPort)
 {
     for (int row = 0; row < SPEKTRUM_SRXL_TEXTGEN_BUFFER_ROWS; row++) {
         for (int col= 0; col < SPEKTRUM_SRXL_TEXTGEN_BUFFER_COLS; col++) {
-            srxlWriteChar(displayPort, col, row, ' ');
+            srxlWriteChar(displayPort, col, row, DISPLAYPORT_ATTR_NONE, ' ');
         }
     }
-    srxlWriteString(displayPort, 1, 0, "BETAFLIGHT");
+    srxlWriteString(displayPort, 1, 0, DISPLAYPORT_ATTR_NONE, "BETAFLIGHT");
 
     if (displayPort->grabCount == 0) {
-        srxlWriteString(displayPort, 0, 2, CMS_STARTUP_HELP_TEXT1);
-        srxlWriteString(displayPort, 2, 3, CMS_STARTUP_HELP_TEXT2);
-        srxlWriteString(displayPort, 2, 4, CMS_STARTUP_HELP_TEXT3);
+        srxlWriteString(displayPort, 0, 2, DISPLAYPORT_ATTR_NONE, CMS_STARTUP_HELP_TEXT1);
+        srxlWriteString(displayPort, 2, 3, DISPLAYPORT_ATTR_NONE, CMS_STARTUP_HELP_TEXT2);
+        srxlWriteString(displayPort, 2, 4, DISPLAYPORT_ATTR_NONE, CMS_STARTUP_HELP_TEXT3);
     }
     return 0;
 }
@@ -95,7 +97,7 @@ static int srxlHeartbeat(displayPort_t *displayPort)
     return 0;
 }
 
-static void srxlResync(displayPort_t *displayPort)
+static void srxlRedraw(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
 }
@@ -128,9 +130,12 @@ static const displayPortVTable_t srxlVTable = {
     .writeChar = srxlWriteChar,
     .isTransferInProgress = srxlIsTransferInProgress,
     .heartbeat = srxlHeartbeat,
-    .resync = srxlResync,
+    .redraw = srxlRedraw,
     .isSynced = srxlIsSynced,
-    .txBytesFree = srxlTxBytesFree
+    .txBytesFree = srxlTxBytesFree,
+    .layerSupported = NULL,
+    .layerSelect = NULL,
+    .layerCopy = NULL,
 };
 
 displayPort_t *displayPortSrxlInit()

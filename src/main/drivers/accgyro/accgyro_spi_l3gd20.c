@@ -40,6 +40,9 @@
 
 #include "accgyro_spi_l3gd20.h"
 
+// 10 MHz max SPI frequency
+#define L3GD20_MAX_SPI_CLK_HZ 10000000
+
 #define READ_CMD               ((uint8_t)0x80)
 #define MULTIPLEBYTE_CMD       ((uint8_t)0x40)
 #define DUMMY_BYTE             ((uint8_t)0x00)
@@ -91,14 +94,14 @@ static void l3gd20IntExtiInit(gyroDev_t *gyro)
 
     IOInit(mpuIntIO, OWNER_GYRO_EXTI, 0);
     EXTIHandlerInit(&gyro->exti, l3gd20ExtiHandler);
-    EXTIConfig(mpuIntIO, &gyro->exti, NVIC_PRIO_MPU_INT_EXTI, IOCFG_IN_FLOATING, EXTI_TRIGGER_RISING);
+    EXTIConfig(mpuIntIO, &gyro->exti, NVIC_PRIO_MPU_INT_EXTI, IOCFG_IN_FLOATING, BETAFLIGHT_EXTI_TRIGGER_RISING);
     EXTIEnable(mpuIntIO, true);
 }
 #endif
 
 void l3gd20GyroInit(gyroDev_t *gyro)
 {
-    spiSetDivisor(gyro->bus.busdev_u.spi.instance, SPI_CLOCK_STANDARD);
+    spiSetDivisor(gyro->bus.busdev_u.spi.instance, spiCalculateDivider(L3GD20_MAX_SPI_CLK_HZ));
 
     spiBusWriteRegister(&gyro->bus, CTRL_REG5_ADDR, BOOT);
 

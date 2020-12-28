@@ -38,6 +38,11 @@
 #include "drivers/io.h"
 #include "drivers/time.h"
 
+// 20 MHz max SPI frequency
+#define FLASH_MAX_SPI_CLK_HZ 20000000
+// 5 MHz max SPI init frequency
+#define FLASH_MAX_SPI_INIT_CLK 5000000
+
 static busDevice_t busInstance;
 static busDevice_t *busdev;
 
@@ -65,12 +70,21 @@ static bool flashQuadSpiInit(const flashConfig_t *flashConfig)
     // Manufacturer, memory type, and capacity
     uint32_t chipID = (readIdResponse[0] << 16) | (readIdResponse[1] << 8) | (readIdResponse[2]);
 
-#ifdef USE_FLASH_W25N01G
+#if defined(USE_FLASH_W25N01G) || defined(USE_FLASH_W25M02G)
     quadSpiSetDivisor(quadSpiInstance, QUADSPI_CLOCK_ULTRAFAST);
 
+#if defined(USE_FLASH_W25N01G)
     if (w25n01g_detect(&flashDevice, chipID)) {
         return true;
     }
+#endif
+
+#if defined(USE_FLASH_W25M02G)
+    if (w25m_detect(&flashDevice, chipID)) {
+        return true;
+    }
+#endif
+
 #endif
 
     return false;
@@ -114,12 +128,10 @@ static bool flashSpiInit(const flashConfig_t *flashConfig)
     IOHi(busdev->busdev_u.spi.csnPin);
 
 #ifdef USE_SPI_TRANSACTION
-    spiBusTransactionInit(busdev, SPI_MODE3_POL_HIGH_EDGE_2ND, SPI_CLOCK_FAST);
+    spiBusTransactionInit(busdev, SPI_MODE3_POL_HIGH_EDGE_2ND, spiCalculateDivider(FLASH_MAX_SPI_INIT_CLK));
 #else
 #ifndef FLASH_SPI_SHARED
-    //Maximum speed for standard READ command is 20mHz, other commands tolerate 25mHz
-    //spiSetDivisor(busdev->busdev_u.spi.instance, SPI_CLOCK_FAST);
-    spiSetDivisor(busdev->busdev_u.spi.instance, SPI_CLOCK_STANDARD*2);
+    spiSetDivisor(busdev->busdev_u.spi.instance, spiCalculateDivider(FLASH_MAX_SPI_INIT_CLK));
 #endif
 #endif
 
@@ -130,7 +142,7 @@ static bool flashSpiInit(const flashConfig_t *flashConfig)
 
     delay(50); // short delay required after initialisation of SPI device instance.
 
-    /* 
+    /*
      * Some newer chips require one dummy byte to be read; we can read
      * 4 bytes for these chips while retaining backward compatibility.
      */
@@ -390,6 +402,7 @@ const char *flashPartitionGetTypeName(flashPartitionType_e type)
 bool flashInit(const flashConfig_t *flashConfig)
 {
     memset(&flashPartitionTable, 0x00, sizeof(flashPartitionTable));
+    flashPartitions = 0;
 
     bool haveFlash = flashDeviceInit(flashConfig);
 

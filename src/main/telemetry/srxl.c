@@ -40,7 +40,7 @@
 #include "io/gps.h"
 #include "io/serial.h"
 
-#include "fc/config.h"
+#include "config/config.h"
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
 
@@ -776,7 +776,7 @@ void initSrxlTelemetry(void)
     // and feature is enabled, if so, set SRXL telemetry enabled
   if (srxlRxIsActive()) {
     srxlTelemetryEnabled = true;
-    srxl2 = false; 
+    srxl2 = false;
 #if defined(USE_SERIALRX_SRXL2)
   } else if (srxl2RxIsActive()) {
     srxlTelemetryEnabled = true;

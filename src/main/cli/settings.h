@@ -32,6 +32,7 @@ typedef enum {
 #ifdef USE_GPS
     TABLE_GPS_PROVIDER,
     TABLE_GPS_SBAS_MODE,
+    TABLE_GPS_UBLOX_MODE,
 #endif
 #ifdef USE_GPS_RESCUE
     TABLE_GPS_RESCUE_SANITY_CHECK,
@@ -40,6 +41,7 @@ typedef enum {
 #ifdef USE_BLACKBOX
     TABLE_BLACKBOX_DEVICE,
     TABLE_BLACKBOX_MODE,
+    TABLE_BLACKBOX_SAMPLE_RATE,
 #endif
     TABLE_CURRENT_METER,
     TABLE_VOLTAGE_METER,
@@ -97,9 +99,9 @@ typedef enum {
     TABLE_GYRO,
 #endif
     TABLE_THROTTLE_LIMIT_TYPE,
-#ifdef USE_MAX7456
+#if defined(USE_MAX7456) || defined(USE_FRSKYOSD)
     TABLE_VIDEO_SYSTEM,
-#endif // USE_MAX7456
+#endif
 #if defined(USE_ITERM_RELAX)
     TABLE_ITERM_RELAX,
     TABLE_ITERM_RELAX_TYPE,
@@ -113,9 +115,6 @@ typedef enum {
     TABLE_RC_SMOOTHING_INPUT_TYPE,
     TABLE_RC_SMOOTHING_DERIVATIVE_TYPE,
 #endif // USE_RC_SMOOTHING_FILTER
-#ifdef USE_GYRO_DATA_ANALYSE
-    TABLE_DYNAMIC_FILTER_RANGE,
-#endif // USE_GYRO_DATA_ANALYSE
 #ifdef USE_VTX_COMMON
     TABLE_VTX_LOW_POWER_DISARM,
 #endif
@@ -138,6 +137,11 @@ typedef enum {
     TABLE_OFF_ON_AUTO,
     TABLE_INTERPOLATED_SP,
     TABLE_DSHOT_BITBANGED_TIMER,
+    TABLE_OSD_DISPLAYPORT_DEVICE,
+#ifdef USE_OSD
+    TABLE_OSD_LOGO_ON_ARMING,
+#endif
+    TABLE_MIXER_TYPE,
 
     LOOKUP_TABLE_COUNT
 } lookupTableIndex_e;
@@ -252,3 +256,7 @@ extern const char * const lookupTableRescueAltitudeMode[];
 extern const char * const lookupTableItermRelax[];
 
 extern const char * const lookupTableItermRelaxType[];
+
+extern const char * const lookupTableOsdDisplayPortDevice[];
+
+extern const char * const lookupTableInterpolatedSetpoint[];
