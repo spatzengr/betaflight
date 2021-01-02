@@ -624,9 +624,9 @@ bool gyroInit(void)
         gyroDetectionFlags |= GYRO_IDENTICAL_MASK;
     } else if (gyro.gyroToUse == GYRO_CONFIG_USE_GYRO_BOTH) {
         // If the user selected "BOTH" and they are not the same type, then reset to using only the first gyro.
-        gyro.gyroToUse = GYRO_CONFIG_USE_GYRO_1;
-        gyroConfigMutable()->gyro_to_use = gyro.gyroToUse;
-        eepromWriteRequired = true;
+    //    gyro.gyroToUse = GYRO_CONFIG_USE_GYRO_1;
+    //    gyroConfigMutable()->gyro_to_use = gyro.gyroToUse;
+    //    eepromWriteRequired = true;
     }
 
     if (gyro.gyroToUse == GYRO_CONFIG_USE_GYRO_2 || gyro.gyroToUse == GYRO_CONFIG_USE_GYRO_BOTH) {
