@@ -238,6 +238,10 @@ static const adjustmentConfig_t defaultAdjustmentConfigs[ADJUSTMENT_FUNCTION_COU
         .adjustmentFunction = ADJUSTMENT_SIMPLIFIED_MASTER_MULTIPLIER,
         .mode = ADJUSTMENT_MODE_SELECT,
         .data = { .switchPositions = 100 }
+    }, {
+        .adjustmentFunction = ADJUSTMENT_ANGLE_MODE_STRENGTH,
+        .mode = ADJUSTMENT_MODE_STEP,
+        .data = { .step = 1 }
     }
 };
 
@@ -279,6 +283,7 @@ static const char * const adjustmentLabels[] = {
     "LED PROFILE",
     "LED DIMMER",
     "SLIDER MASTER MULTIPLIER",
+    "ANGLE MODE STRENGTH",
 };
 
 static int adjustmentRangeNameIndex = 0;
@@ -290,6 +295,11 @@ static int applyStepAdjustment(controlRateConfig_t *controlRateConfig, uint8_t a
     beeperConfirmationBeeps(delta > 0 ? 2 : 1);
     int newValue;
     switch (adjustmentFunction) {
+    case ADJUSTMENT_ANGLE_MODE_STRENGTH:
+        newValue = constrain((int)currentPidProfile->pid[PID_LEVEL].P + delta, 0, 200);
+        currentPidProfile->pid[PID_LEVEL].P = newValue;
+        blackboxLogInflightAdjustmentEvent(ADJUSTMENT_ANGLE_MODE_STRENGTH, newValue);
+        break;
     case ADJUSTMENT_RC_RATE:
     case ADJUSTMENT_ROLL_RC_RATE:
         newValue = constrain((int)controlRateConfig->rcRates[FD_ROLL] + delta, 1, CONTROL_RATE_CONFIG_RC_RATES_MAX);
@@ -453,6 +463,11 @@ static int applyAbsoluteAdjustment(controlRateConfig_t *controlRateConfig, adjus
     int newValue;
 
     switch (adjustmentFunction) {
+    case ADJUSTMENT_ANGLE_MODE_STRENGTH:
+        newValue = constrain(value, 0, 200);
+        currentPidProfile->pid[PID_LEVEL].P = newValue;
+        blackboxLogInflightAdjustmentEvent(ADJUSTMENT_ANGLE_MODE_STRENGTH, newValue);
+        break;
     case ADJUSTMENT_RC_RATE:
     case ADJUSTMENT_ROLL_RC_RATE:
         newValue = constrain(value, 1, CONTROL_RATE_CONFIG_RC_RATES_MAX);
